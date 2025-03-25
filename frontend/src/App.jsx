@@ -1,4 +1,3 @@
-import React from "react";
 import Header from "./components/Header";
 import { Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
@@ -12,7 +11,7 @@ import Login from "./pages/Login";
 import Orders from "./pages/Orders";
 import Verify from "./pages/Verify";
 import WhatsAppButton from "./components/WhatsappButton";
-import UserDetail from "./pages/userDetail";
+import UserDetail from "./pages/UserDetail";
 import EditProfile from "./pages/UpdateProfile";
 
 const App = () => {
@@ -31,7 +30,7 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/user-detail" element={<UserDetail />} />
-        <Route path="/edit-profile" element={<EditProfile />} />
+        <Route path="/update-profile" element={<EditProfile />} />
         <Route path="/verify" element={<Verify />} />
       </Routes>
       {location.pathname !== "/login" && <WhatsAppButton />}

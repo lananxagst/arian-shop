@@ -1,25 +1,76 @@
-import React from 'react'
+import { useState, useEffect } from 'react'
 import Title from './Title'
-import testimonial from "../assets/testimonial.png"
-import { TbLocation } from 'react-icons/tb'
-import { RiAdminLine, RiSecurePaymentLine, RiSoundModuleLine } from 'react-icons/ri'
-import { FaQuoteLeft, FaUsersLine } from 'react-icons/fa6'
+import owner from "../assets/owner.jpg"
 import about from "../assets/about.png"
-
+import { TbLocation } from 'react-icons/tb'
+import { RiSecurePaymentLine, RiSoundModuleLine } from 'react-icons/ri'
+import { FaQuoteLeft, FaUsersLine } from 'react-icons/fa6'
 
 const About = () => {
+  const [quote, setQuote] = useState("Loading inspirational quote...");
+  const [quoteAuthor, setQuoteAuthor] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchQuote = async () => {
+      try {
+        // Using ZenQuotes API which provides free access to motivational quotes
+        const response = await fetch("https://zenquotes.io/api/random");
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch quote");
+        }
+        
+        const data = await response.json();
+        if (data && data.length > 0) {
+          setQuote(data[0].q);
+          setQuoteAuthor(data[0].a);
+        } else {
+          // Fallback quotes if API fails
+          const fallbackQuotes = [
+            { text: "Success is not final, failure is not fatal: It is the courage to continue that counts.", author: "Winston Churchill" },
+            { text: "The best way to predict the future is to create it.", author: "Peter Drucker" },
+            { text: "Quality means doing it right when no one is looking.", author: "Henry Ford" },
+            { text: "Your work is going to fill a large part of your life, and the only way to be truly satisfied is to do what you believe is great work.", author: "Steve Jobs" }
+          ];
+          const randomQuote = fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)];
+          setQuote(randomQuote.text);
+          setQuoteAuthor(randomQuote.author);
+        }
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching quote:", err);
+        // Set a default quote if there's an error
+        setQuote("Quality printing is not what you pay for, it's what you get.");
+        setQuoteAuthor("Arian Printing");
+        setLoading(false);
+      }
+    };
+
+    fetchQuote();
+  }, []);
+
   return (
     <section className='max-padd-container py-16'>
       {/* CONTAINER */}
       <div className='flex flex-col md:flex-row gap-5 gap-y-10'>
         {/* TESTIMONIAL */}
         <div className='flex-1 flexCenter flex-col'>
-          <Title title1={'People'} title2={"Says"} title1Styles={"h3"} titleStyles={'!pb-2'}/>
-          <img src={testimonial} alt="" height={55} width={55} className='rounded-full'/>
-          <h4 className='h4 mt-6'>John Doe</h4>
-          <p className='relative bottom-2'>CEO At TechStack</p>
+          <Title title1={'Owners'} title2={"Greetings"} title1Styles={"h3"} titleStyles={'!pb-2'}/>
+          <img src={owner} alt="" height={100} width={100} className='rounded-2xl'/>
+          <h4 className='h4 mt-6'>Tude Dogen Ne</h4>
+          <p className='relative bottom-2'>Owner Of Arian</p>
           <FaQuoteLeft className='text-3xl'/>
-          <p className='max-w-[222px] mt-5 text-center'>Lorem ipsum dolor, sit amet consectetur adipisicing elit. Et libero reiciendis quibusdam ad perspiciatis non ut?</p>
+          <div className='max-w-[280px] mt-5 text-center'>
+            {loading ? (
+              <p>Loading inspirational quote...</p>
+            ) : (
+              <>
+                <p className="italic">&ldquo;{quote}&rdquo;</p>
+                {quoteAuthor && <p className="text-sm mt-2 font-semibold">— {quoteAuthor}</p>}
+              </>
+            )}
+          </div>
         </div>
         {/* BANNER */}
         <div className='flex-[2] flex rounded-2xl relative'>
@@ -31,46 +82,36 @@ const About = () => {
             <h2 className='h2 uppercase'>Trending</h2>
           </div>
         </div>
-        {/* ABOUT */}
-        <div className='flex-[1] flexCenter flex-col'>
-          <Title title1={'About'} title2={"Us"} title1Styles={'h3'} titleStyles={'!pb-2'}/>
-          <div className='flex flex-col items-start'>
-            <div className='flexCenter gap-3 mb-3'>
-              <RiSecurePaymentLine className='text-xl'/>
-              <div>
-                <h5 className='h5'>Fast & Secure</h5>
-                <p>Optimized performance</p>
-              </div>
-            </div>
-            <div className='flexCenter gap-3 mb-3'>
-              <RiSoundModuleLine className='text-xl'/>
-              <div>
-                <h5 className='h5'>Advanced Filtering</h5>
-                <p>Find items quickly</p>
-              </div>
-            </div>
-            <div className='flexCenter gap-3 mb-3'>
-              <FaUsersLine className='text-xl'/>
-              <div>
-                <h5 className='h5'>User Reviews</h5>
-                <p>Ratings & feedback</p>
-              </div>
-            </div>
-            <div className='flexCenter gap-3 mb-3'>
-              <TbLocation className='text-xl'/>
-              <div>
-                <h5 className='h5'>Order Tracking</h5>
-                <p>Live order status</p>
-              </div>
-            </div>
-            <div className='flexCenter gap-3 mb-3'>
-              <RiAdminLine className='text-xl'/>
-              <div>
-                <h5 className='h5'>Admin Dashboard</h5>
-                <p>Manage store easily</p>
-              </div>
-            </div>
+      </div>
+      {/* FEATURES */}
+      <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-10'>
+        <div className='flexCenter flex-col gap-2'>
+          <div className='bg-white p-3 rounded-full'>
+            <TbLocation className='text-3xl'/>
           </div>
+          <h5 className='h5'>Worldwide Shipping</h5>
+          <p className='text-center'>We ship to over 200 countries worldwide</p>
+        </div>
+        <div className='flexCenter flex-col gap-2'>
+          <div className='bg-white p-3 rounded-full'>
+            <RiSecurePaymentLine className='text-3xl'/>
+          </div>
+          <h5 className='h5'>Secure Payment</h5>
+          <p className='text-center'>Your payment information is secure</p>
+        </div>
+        <div className='flexCenter flex-col gap-2'>
+          <div className='bg-white p-3 rounded-full'>
+            <RiSoundModuleLine className='text-3xl'/>
+          </div>
+          <h5 className='h5'>Quality Support</h5>
+          <p className='text-center'>We ensure our product quality all the time</p>
+        </div>
+        <div className='flexCenter flex-col gap-2'>
+          <div className='bg-white p-3 rounded-full'>
+            <FaUsersLine className='text-3xl'/>
+          </div>
+          <h5 className='h5'>Happy Customer</h5>
+          <p className='text-center'>We ensure our product quality all the time</p>
         </div>
       </div>
     </section>

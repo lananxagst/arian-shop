@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect, useCallback } from "react";
 import Title from "../components/Title";
 import CartTotal from "../components/CartTotal";
 import Footer from "../components/Footer";
@@ -11,15 +11,47 @@ const PlaceOrder = () => {
   const {
     navigate,
     products,
-    currency,
     delivery_charges,
     cartItems,
     setCartItems,
-    addToCart,
     getCartAmount,
     token,
     backendUrl,
   } = useContext(ShopContext);
+
+  // Function to explicitly fetch cart data from the server
+  const fetchCartData = useCallback(async () => {
+    try {
+      console.log("PlaceOrder: Fetching cart data with token:", token);
+      const response = await axios.post(
+        backendUrl + "/api/cart/get",
+        {},
+        { headers: { token } }
+      );
+      
+      console.log("PlaceOrder: Cart data response:", response.data);
+      
+      if (response.data.success) {
+        setCartItems(response.data.cartData);
+        console.log("PlaceOrder: Updated cart items:", response.data.cartData);
+      } else {
+        console.error("PlaceOrder: Failed to fetch cart data:", response.data.message);
+      }
+    } catch (error) {
+      console.error("PlaceOrder: Error fetching cart data:", error);
+    }
+  }, [backendUrl, token, setCartItems]);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!token) {
+      toast.info("Please login to continue with checkout");
+      navigate("/login", { state: { returnTo: "/place-order" } });
+    } else {
+      // Explicitly fetch cart data when component mounts and user is logged in
+      fetchCartData();
+    }
+  }, [token, navigate, fetchCartData]);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -61,6 +93,7 @@ const PlaceOrder = () => {
       }
 
       let orderData = {
+        userId: token,
         address: formData,
         items: orderItems,
         amount: getCartAmount() + delivery_charges,
@@ -102,7 +135,6 @@ const PlaceOrder = () => {
           break;
       }
     } catch (error) {
-      console.log(error);
       toast.error(error.message);
     }
   };

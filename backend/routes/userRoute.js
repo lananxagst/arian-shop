@@ -2,8 +2,11 @@ import express from "express";
 import {
   adminLogin,
   googleLoginUser,
+  getWishlist,
   loginUser,
   registerUser,
+  removeFromWishlist,
+  toggleWishlistItem,
 } from "../controllers/userController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import userModel from "../models/userModel.js";
@@ -98,5 +101,10 @@ userRouter.put(
     }
   }
 );
+
+// Wishlist routes
+userRouter.get("/wishlist", authMiddleware, getWishlist);
+userRouter.post("/wishlist/toggle", authMiddleware, toggleWishlistItem);
+userRouter.post("/wishlist/remove", authMiddleware, removeFromWishlist);
 
 export default userRouter;

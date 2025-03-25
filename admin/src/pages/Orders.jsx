@@ -1,15 +1,14 @@
-import React from "react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { backend_url, currency } from "../App";
-import { useEffect } from "react";
 import { toast } from "react-toastify";
 import { TfiPackage } from "react-icons/tfi";
+import PropTypes from 'prop-types';
 
 const Orders = ({ token }) => {
   const [orders, setOrders] = useState([]);
 
-  const fetchAllOrders = async () => {
+  const fetchAllOrders = useCallback(async () => {
     if (!token) {
       return null;
     }
@@ -26,9 +25,9 @@ const Orders = ({ token }) => {
       }
     } catch (error) {
       console.log(error);
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || "An error occurred while fetching orders");
     }
-  };
+  }, [token]);
 
   const statusHandler = async (event, orderId) => {
     try {
@@ -43,13 +42,13 @@ const Orders = ({ token }) => {
       }
     } catch (error) {
       console.log(error);
-      toast.error(response.data.message);
+      toast.error(error.response?.data?.message || "An error occurred while updating order status");
     }
   };
 
   useEffect(() => {
     fetchAllOrders();
-  }, [token]);
+  }, [token, fetchAllOrders]);
   return (
     <div className="px-2 sm:px-8 sm:mt-14">
       <div className="flex flex-col gap-4">
@@ -70,14 +69,14 @@ const Orders = ({ token }) => {
                       return (
                         <p key={index}>
                           {item.name} x {item.quantity}{" "}
-                          <span>"{item.color}"</span>
+                          <span>{`"${item.color}"`}</span>
                         </p>
                       );
                     } else {
                       return (
                         <p key={index}>
                           {item.name} x {item.quantity}{" "}
-                          <span>"{item.color}"</span> ,
+                          <span>{`"${item.color}"`}</span> ,
                         </p>
                       );
                     }
@@ -129,6 +128,10 @@ const Orders = ({ token }) => {
       </div>
     </div>
   );
+};
+
+Orders.propTypes = {
+  token: PropTypes.string.isRequired
 };
 
 export default Orders;

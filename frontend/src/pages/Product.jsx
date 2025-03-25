@@ -16,21 +16,21 @@ import Footer from "../components/Footer";
 
 const Product = () => {
   const { productId } = useParams();
-  const { products, currency, addToCart } = useContext(ShopContext);
+  const { products, currency, addToCart, addToWishlist, isInWishlist } = useContext(ShopContext);
   const [product, setProduct] = useState(null);
   const [image, setImage] = useState("");
   const [color, setColor] = useState("");
 
-  const fetchProductData = async () => {
-    const selectedProduct = products.find((item) => item._id === productId);
-    if (selectedProduct) {
-      setProduct(selectedProduct);
-      setImage(selectedProduct.image[0]);
-      // console.log(selectedProduct);
-    }
-  };
-
   useEffect(() => {
+    const fetchProductData = async () => {
+      const selectedProduct = products.find((item) => item._id === productId);
+      if (selectedProduct) {
+        setProduct(selectedProduct);
+        setImage(selectedProduct.image[0]);
+        // console.log(selectedProduct);
+      }
+    };
+
     fetchProductData();
   }, [productId, products]);
 
@@ -48,6 +48,7 @@ const Product = () => {
             <div className="flex-1 flexCenter flex-col gap-[7px] flex-wrap">
               {product.image.map((item, i) => (
                 <img
+                  key={i}
                   onClick={() => setImage(item)}
                   src={item}
                   alt="prdctImg"
@@ -109,7 +110,10 @@ const Product = () => {
               >
                 Add to Cart <TbShoppingBagPlus />
               </button>
-              <button className="btn-white !rounded-lg !py-3.5">
+              <button 
+                onClick={() => addToWishlist(product._id)} 
+                className={`btn-white !rounded-lg !py-3.5 ${isInWishlist(product._id) ? 'text-red-500' : ''}`}
+              >
                 <FaHeart />
               </button>
             </div>
