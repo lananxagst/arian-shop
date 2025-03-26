@@ -3,7 +3,7 @@ import axios from "axios";
 import Footer from "../components/Footer";
 import { Link, useNavigate } from "react-router-dom";
 import { ShopContext } from "../context/ShopContext";
-import { FaTrash } from "react-icons/fa6";
+import { FaTrash } from "react-icons/fa";
 
 const UserDetail = () => {
   const [user, setUser] = useState(null);
@@ -232,8 +232,11 @@ const UserDetail = () => {
                       );
                     })}
                     {wishlist.length === 0 && (
-                      <div className="col-span-full text-center py-8 text-gray-500">
-                        Your wishlist is empty
+                      <div className="col-span-full flex flex-col items-center justify-center py-16">
+                        <p className="text-gray-500 text-lg text-center">Your wishlist is empty.</p>
+                        <Link to="/collection" className="inline-block mt-4 px-6 py-2 bg-secondary text-white rounded-lg hover:bg-tertiary transition-colors">
+                          Continue Shopping
+                        </Link>
                       </div>
                     )}
                   </div>

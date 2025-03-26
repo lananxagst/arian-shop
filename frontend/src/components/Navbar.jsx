@@ -1,5 +1,5 @@
-import React from "react";
 import { NavLink } from "react-router-dom";
+import PropTypes from "prop-types";
 
 const Navbar = ({ containerStyles, onClick }) => {
   const navLinks = [
@@ -25,6 +25,16 @@ const Navbar = ({ containerStyles, onClick }) => {
       ))}
     </nav>
   );
+};
+
+Navbar.propTypes = {
+  containerStyles: PropTypes.string,
+  onClick: PropTypes.func
+};
+
+Navbar.defaultProps = {
+  containerStyles: "",
+  onClick: () => {}
 };
 
 export default Navbar;

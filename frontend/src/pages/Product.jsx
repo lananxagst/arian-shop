@@ -16,7 +16,8 @@ import Footer from "../components/Footer";
 
 const Product = () => {
   const { productId } = useParams();
-  const { products, currency, addToCart, addToWishlist, isInWishlist } = useContext(ShopContext);
+  const { products, currency, addToCart, addToWishlist, isInWishlist } =
+    useContext(ShopContext);
   const [product, setProduct] = useState(null);
   const [image, setImage] = useState("");
   const [color, setColor] = useState("");
@@ -78,7 +79,7 @@ const Product = () => {
             </div>
             <h4 className="h4 my-2">
               {currency}
-              {product.price}.000
+              {product.price}
             </h4>
             <p className="max-w-[555px]">{product.description}</p>
             <div className="flex flex-col gap-4 my-4 mb-5">
@@ -110,9 +111,11 @@ const Product = () => {
               >
                 Add to Cart <TbShoppingBagPlus />
               </button>
-              <button 
-                onClick={() => addToWishlist(product._id)} 
-                className={`btn-white !rounded-lg !py-3.5 ${isInWishlist(product._id) ? 'text-red-500' : ''}`}
+              <button
+                onClick={() => addToWishlist(product._id)}
+                className={`btn-white !rounded-lg !py-3.5 ${
+                  isInWishlist(product._id) ? "text-red-500" : ""
+                }`}
               >
                 <FaHeart />
               </button>
@@ -142,3 +145,4 @@ const Product = () => {
 };
 
 export default Product;
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { FaDribbble, FaFacebookF, FaInstagram } from 'react-icons/fa6'
 import { toast } from 'react-toastify'
 import axios from 'axios'

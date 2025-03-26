@@ -127,6 +127,12 @@ const ShopContextProvider = ({ children }) => {
     return totalAmount;
   };
 
+  // FORMAT PRICE IN IDR FORMAT (e.g., 103.000)
+  const formatPrice = (price) => {
+    if (typeof price !== 'number') return "N/A";
+    return price.toLocaleString('id-ID').replace(',', '.');
+  };
+
   // GETTING USER WISHLIST
   const getWishlist = useCallback(async () => {
     try {
@@ -412,6 +418,7 @@ const ShopContextProvider = ({ children }) => {
     removeFromWishlist,
     isInWishlist,
     clearCart,
+    formatPrice,
   };
 
   return (

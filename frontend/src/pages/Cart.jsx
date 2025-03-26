@@ -130,7 +130,7 @@ const Cart = () => {
               <div className="text-center py-10">
                 <p className="mb-5">Your cart is empty</p>
                 <button
-                  onClick={() => navigate("/shop")}
+                  onClick={() => navigate("/collection")}
                   className="btn-dark !py-2"
                 >
                   Continue Shopping
