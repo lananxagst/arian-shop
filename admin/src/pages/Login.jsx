@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import login from "../assets/arian-login.png";
+import { useState } from "react";
+import login from "../assets/logo_baru.png";
 import axios from "axios";
 import { backend_url } from "../App";
 import { toast } from "react-toastify";
+import PropTypes from 'prop-types';
 
 const Login = ({ setToken }) => {
   const [email, setEmail] = useState("");
@@ -93,6 +94,10 @@ const Login = ({ setToken }) => {
       </div>
     </div>
   );
+};
+
+Login.propTypes = {
+  setToken: PropTypes.func.isRequired
 };
 
 export default Login;

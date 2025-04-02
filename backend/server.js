@@ -27,12 +27,14 @@ app.use(
         callback(null, true);
       } else {
         console.log("Blocked origin:", origin);
-        callback(null, true); // Still allow for debugging, but log blocked origins
+        // For debugging, allow all origins
+        callback(null, true);
       }
     },
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization", "token"],
     credentials: true,
+    exposedHeaders: ["token"]
   })
 );
 

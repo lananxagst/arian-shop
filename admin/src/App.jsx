@@ -7,7 +7,7 @@ import Add from "./pages/Add";
 import Orders from "./pages/Orders";
 import List from "./pages/List";
 
-export const backend_url = import.meta.env.VITE_BACKEND_URL;
+export const backend_url = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 export const currency = "IDR ";
 
 export default function App() {

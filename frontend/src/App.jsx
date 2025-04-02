@@ -13,6 +13,8 @@ import Verify from "./pages/Verify";
 import WhatsAppButton from "./components/WhatsappButton";
 import UserDetail from "./pages/UserDetail";
 import EditProfile from "./pages/UpdateProfile";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
 
 const App = () => {
   const location = useLocation();
@@ -32,6 +34,8 @@ const App = () => {
         <Route path="/user-detail" element={<UserDetail />} />
         <Route path="/update-profile" element={<EditProfile />} />
         <Route path="/verify" element={<Verify />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-cancel" element={<PaymentCancel />} />
       </Routes>
       {location.pathname !== "/login" && <WhatsAppButton />}
     </main>

@@ -6,7 +6,7 @@ import Footer from "../components/Footer";
 import { FaImage } from "react-icons/fa";
 
 const Orders = () => {
-  const { backendUrl, token, currency } = useContext(ShopContext);
+  const { backendUrl, token, currency, formatPrice } = useContext(ShopContext);
   const [orderData, setOrderData] = useState([]);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [selectedEvidence, setSelectedEvidence] = useState(null);
@@ -129,7 +129,7 @@ const Orders = () => {
                             <h5 className="medium-14">Price:</h5>
                             <p>
                               {currency}
-                              {item.price}
+                              {formatPrice(item.price)}
                             </p>
                           </div>
                           <div className="flexCenter gap-x-2">

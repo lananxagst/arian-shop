@@ -130,7 +130,9 @@ const ShopContextProvider = ({ children }) => {
   // FORMAT PRICE IN IDR FORMAT (e.g., 103.000)
   const formatPrice = (price) => {
     if (typeof price !== 'number') return "N/A";
-    return price.toLocaleString('id-ID').replace(',', '.');
+    // Multiply by 1000 to convert to Indonesian Rupiah
+    const priceInIDR = price * 1000;
+    return priceInIDR.toLocaleString('id-ID').replace(',', '.');
   };
 
   // GETTING USER WISHLIST

@@ -1,6 +1,16 @@
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 import { v2 as cloudinary } from "cloudinary";
+import Stripe from "stripe";
+
+//global variable for payment
+const currency = "idr"
+const diliveryCharges = 10
+const minimumAmountInIDR = 10000 // Minimum amount in IDR (approximately 0.65 USD)
+const stripeUnitConversion = 100 // Convert IDR to sen (1 IDR = 100 sen)
+
+//gateway initialize
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 //controller function for placing order using cod method
 const placeOrder = async (req, res) => {
@@ -33,6 +43,7 @@ const placeOrder = async (req, res) => {
 const placeOrderStripe = async (req, res) => {
   try {
     const { userId, items, amount, address } = req.body;
+    const {origin} = req.headers;
     
     // Create a pending order in the database
     const orderData = {
@@ -47,18 +58,60 @@ const placeOrderStripe = async (req, res) => {
     };
     
     const newOrder = new orderModel(orderData);
-    await newOrder.save();
+    const savedOrder = await newOrder.save();
     
-    // Here you would typically create a Stripe checkout session
-    // For now, we'll just simulate a successful payment
+    // Create line items for Stripe
+    const line_items = items.map(item => ({
+      price_data: {
+        currency: currency,
+        product_data: {
+          name: item.name,
+          description: item.description || '',
+          images: item.images && item.images.length > 0 ? [item.images[0]] : [],
+        },
+        // The price is already multiplied by 1000 from the frontend
+        // For Stripe, we need to convert to the smallest currency unit (sen)
+        // 1 IDR = 100 sen, so we need to multiply by 100
+        unit_amount: Math.round(item.price * 100),
+      },
+      quantity: item.quantity
+    }));
     
-    // Clear the user's cart
-    await userModel.findByIdAndUpdate(userId, { cartData: {} });
+    // Add delivery charges as a separate line item if applicable
+    if (diliveryCharges > 0) {
+      line_items.push({
+        price_data: {
+          currency: currency,
+          product_data: {
+            name: "Delivery Charges",
+          },
+          // Delivery charges are also multiplied by 1000 from the frontend
+          // Then multiply by 100 to convert to sen
+          unit_amount: Math.round(diliveryCharges * 1000 * 100),
+        },
+        quantity: 1
+      });
+    }
+    
+    // Create Stripe checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: line_items,
+      mode: 'payment',
+      success_url: `${origin}/payment-success?order_id=${savedOrder._id}`,
+      cancel_url: `${origin}/payment-cancel?order_id=${savedOrder._id}`,
+      metadata: {
+        order_id: savedOrder._id.toString()
+      }
+    });
+    
+    // Don't clear the cart until payment is successful
+    // We'll handle this in the payment success webhook or callback
     
     res.json({ 
       success: true, 
-      message: "Stripe order created",
-      session_url: "/payment-success" // In a real implementation, this would be the Stripe checkout URL
+      message: "Stripe checkout session created",
+      session_url: session.url
     });
   } catch (error) {
     console.log(error);
@@ -155,6 +208,39 @@ const updateStatus = async (req, res) => {
   }
 };
 
+// Update payment status
+const updatePaymentStatus = async (req, res) => {
+  try {
+    const { orderId, paymentStatus } = req.body;
+    
+    if (!orderId) {
+      return res.json({ success: false, message: "Order ID is required" });
+    }
+    
+    // Check if order exists
+    const order = await orderModel.findById(orderId);
+    if (!order) {
+      return res.json({ success: false, message: "Order not found" });
+    }
+    
+    // Update payment status
+    order.payment = paymentStatus;
+    await order.save();
+    
+    // Fetch the updated order to ensure we have the complete object
+    const updatedOrder = await orderModel.findById(orderId);
+    
+    res.json({ 
+      success: true, 
+      message: "Payment status updated successfully",
+      order: updatedOrder
+    });
+  } catch (error) {
+    console.error("Error updating payment status:", error);
+    res.json({ success: false, message: "Failed to update payment status" });
+  }
+};
+
 // Delete order
 const deleteOrder = async (req, res) => {
   try {
@@ -180,11 +266,12 @@ const deleteOrder = async (req, res) => {
   }
 };
 
-export { 
-  placeOrder, 
-  placeOrderStripe, 
-  allOrders, 
-  userOrders, 
-  updateStatus, 
-  deleteOrder 
+export default {
+  placeOrder,
+  placeOrderStripe,
+  allOrders,
+  userOrders,
+  updateStatus,
+  deleteOrder,
+  updatePaymentStatus
 };

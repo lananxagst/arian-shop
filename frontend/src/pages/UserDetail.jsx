@@ -7,7 +7,7 @@ import { FaTrash } from "react-icons/fa";
 
 const UserDetail = () => {
   const [user, setUser] = useState(null);
-  const { cartItems, products, wishlist, currency, backendUrl, token, clearCart, removeFromWishlist } = useContext(ShopContext);
+  const { cartItems, products, wishlist, currency, backendUrl, token, clearCart, removeFromWishlist, formatPrice } = useContext(ShopContext);
   const [activeTab, setActiveTab] = useState("account");
   const [orderData, setOrderData] = useState([]);
   const navigate = useNavigate();
@@ -217,7 +217,7 @@ const UserDetail = () => {
                               className="w-full h-48 object-cover rounded-lg mb-2"
                             />
                             <h3 className="font-medium text-lg">{product.name}</h3>
-                            <p className="text-gray-600">{currency} {product.price.toLocaleString()}</p>
+                            <p className="text-gray-600">{currency} {formatPrice(product.price)}</p>
                           </Link>
                           <div className="mt-2 flex justify-end">
                             <button 
@@ -272,13 +272,13 @@ const UserDetail = () => {
                                       </p>
                                       <p>
                                         <span className="font-medium">Price:</span>{" "}
-                                        {currency} {product.price.toLocaleString()}
+                                        {currency} {formatPrice(product.price)}
                                       </p>
                                     </div>
                                   </div>
                                   <div className="text-right">
                                     <p className="text-lg font-semibold text-secondary">
-                                      {currency} {(product.price * quantity).toLocaleString()}
+                                      {currency} {formatPrice(product.price * quantity)}
                                     </p>
                                   </div>
                                 </div>
@@ -316,7 +316,7 @@ const UserDetail = () => {
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h2 className="text-2xl font-semibold mb-6 text-secondary">Order History</h2>
                 <div className="flex-1 overflow-y-auto max-h-[400px] mb-6 pr-2 custom-scrollbar">
-                  {orderData.map((item, index) => (
+                  {orderData.map((item, index, ) => (
                     <div key={index} className="bg-primary p-4 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <div>
@@ -326,7 +326,7 @@ const UserDetail = () => {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-semibold text-secondary">{currency} {item.price.toLocaleString()}</p>
+                          <p className="text-lg font-semibold text-secondary">{currency} {item.price.toLocaleString('id-ID').replace(',', '.')}</p>
                           <p className="text-sm text-gray-600">{new Date(item.date).toLocaleDateString()}</p>
                         </div>
                       </div>
