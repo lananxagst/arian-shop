@@ -7,6 +7,7 @@ import userRouter from "./routes/userRoute.js";
 import producRouter from "./routes/productRoute.js";
 import cartRouter from "./routes/cartRoute.js";
 import orderRouter from "./routes/orderRoute.js";
+import subscriberRouter from "./routes/subscriberRoutes.js";
 
 // App Config
 const app = express();
@@ -15,13 +16,25 @@ connectDB();
 connectCloudinary();
 
 // Middleware
-// const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
 app.use(
   cors({
-    origin: "*", // Mengizinkan semua origin (sementara untuk debugging)
+    origin: function(origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log("Blocked origin:", origin);
+        // For debugging, allow all origins
+        callback(null, true);
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization", "token"],
     credentials: true,
+    exposedHeaders: ["token"]
   })
 );
 
@@ -32,6 +45,7 @@ app.use("/api/user", userRouter);
 app.use("/api/product", producRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/order", orderRouter);
+app.use("/api/subscribers", subscriberRouter);
 
 app.get("/", (req, res) => {
   res.send("API Working");

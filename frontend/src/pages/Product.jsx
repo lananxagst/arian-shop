@@ -13,26 +13,49 @@ import ProductDescription from "../components/ProductDescription";
 import ProductFeatures from "../components/ProductFeatures";
 import RelatedProducts from "../components/RelatedProducts";
 import Footer from "../components/Footer";
+import { toast } from "react-toastify";
 
 const Product = () => {
   const { productId } = useParams();
-  const { products, currency, addToCart } = useContext(ShopContext);
+  const { products, currency, addToCart, addToWishlist, isInWishlist, formatPrice, navigate, token } =
+    useContext(ShopContext);
   const [product, setProduct] = useState(null);
   const [image, setImage] = useState("");
   const [color, setColor] = useState("");
 
-  const fetchProductData = async () => {
-    const selectedProduct = products.find((item) => item._id === productId);
-    if (selectedProduct) {
-      setProduct(selectedProduct);
-      setImage(selectedProduct.image[0]);
-      // console.log(selectedProduct);
-    }
-  };
-
   useEffect(() => {
+    const fetchProductData = async () => {
+      const selectedProduct = products.find((item) => item._id === productId);
+      if (selectedProduct) {
+        setProduct(selectedProduct);
+        setImage(selectedProduct.image[0]);
+        // console.log(selectedProduct);
+      }
+    };
+
     fetchProductData();
   }, [productId, products]);
+
+  // Function to handle direct checkout
+  const handleBuyNow = () => {
+    if (!color) {
+      toast.error("Please select a color first");
+      return;
+    }
+
+    if (!token) {
+      // If user is not logged in, redirect to login with returnTo set to this product page
+      toast.info("Please login to continue with checkout");
+      navigate("/login", { state: { returnTo: `/product/${productId}`, directCheckout: true, productId, color } });
+      return;
+    }
+
+    // Add to cart first (this will be a temporary addition that gets processed at checkout)
+    addToCart(product._id, color);
+    
+    // Navigate to place order page
+    navigate("/place-order", { state: { directCheckout: true, productId: product._id, color } });
+  };
 
   if (!product) {
     return <div>...Loading</div>;
@@ -48,6 +71,7 @@ const Product = () => {
             <div className="flex-1 flexCenter flex-col gap-[7px] flex-wrap">
               {product.image.map((item, i) => (
                 <img
+                  key={i}
                   onClick={() => setImage(item)}
                   src={item}
                   alt="prdctImg"
@@ -76,8 +100,7 @@ const Product = () => {
               </div>
             </div>
             <h4 className="h4 my-2">
-              {currency}
-              {product.price}.000
+              {currency} {formatPrice(product.price)}
             </h4>
             <p className="max-w-[555px]">{product.description}</p>
             <div className="flex flex-col gap-4 my-4 mb-5">
@@ -105,11 +128,22 @@ const Product = () => {
             <div className="flex items-center gap-x-4">
               <button
                 onClick={() => addToCart(product._id, color)}
-                className="btn-secondary !rounded-lg sm:w-1/2 flexCenter gap-x-2 capitalize"
+                className="btn-secondary !rounded-lg flexCenter gap-x-2 capitalize flex-1"
               >
                 Add to Cart <TbShoppingBagPlus />
               </button>
-              <button className="btn-white !rounded-lg !py-3.5">
+              <button
+                onClick={handleBuyNow}
+                className="btn-dark !rounded-lg flexCenter gap-x-2 capitalize flex-1"
+              >
+                Buy Now
+              </button>
+              <button
+                onClick={() => addToWishlist(product._id)}
+                className={`btn-white !rounded-lg !py-3.5 ${
+                  isInWishlist(product._id) ? "text-red-500" : ""
+                }`}
+              >
                 <FaHeart />
               </button>
             </div>

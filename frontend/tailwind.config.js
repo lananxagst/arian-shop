@@ -21,8 +21,8 @@ export default {
         "4xl": "2200px",
       },
       backgroundImage: {
-        hero: "url(/src/assets/arian-banner.png)",
-        banner: "url(/src/assets/arian-banner.png)",
+        hero: "url(/src/assets/arian-banner.jpg)",
+        banner: "url(/src/assets/arian-banner.jpg)",
       },
     },
   },

@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const EditProfile = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState({
     name: "",
     email: "",
@@ -27,6 +30,7 @@ const EditProfile = () => {
         }
       } catch (error) {
         console.error("Error fetching user data", error);
+        toast.error("Failed to load user data");
       }
     };
     fetchUserData();
@@ -49,6 +53,13 @@ const EditProfile = () => {
       formData.append("bio", user.bio);
       formData.append("phone", user.phone);
       formData.append("address", user.address);
+      
+      // Only include password if it's not empty
+      if (user.password && user.password.trim() !== "") {
+        formData.append("password", user.password);
+        console.log("Including password in update");
+      }
+      
       if (user.avatar instanceof File) {
         formData.append("avatar", user.avatar);
       }
@@ -65,10 +76,18 @@ const EditProfile = () => {
       );
 
       if (res.data.success) {
-        alert("Profile updated successfully");
+        toast.success("Profile updated successfully");
+        // Clear password field after successful update
+        setUser({ ...user, password: "" });
+        
+        // Redirect to UserDetail page after successful update
+        setTimeout(() => {
+          navigate("/user-detail");
+        }, 1000); // Short delay to allow the toast to be seen
       }
     } catch (error) {
       console.error("Error updating profile", error);
+      toast.error("Failed to update profile: " + (error.response?.data?.message || error.message));
     }
   };
 

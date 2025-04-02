@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import { useState, useContext } from "react";
 import { Link } from "react-router-dom";
+import PropTypes from "prop-types";
+import { ShopContext } from "../context/ShopContext";
 
 const Item = ({ product }) => {
   const [hovered, setHovered] = useState(false);
+  const { formatPrice } = useContext(ShopContext);
 
-  // Fallback untuk data produk
   if (!product) return null;
 
   const { _id, name, category, price, description, image } = product;
@@ -39,7 +41,7 @@ const Item = ({ product }) => {
         <div className="flexBetween pt-1">
           <p className="h5">{category || "Uncategorized"}</p>
           <h5 className="h5 pr-2">
-            IDR {typeof price === "number" ? price.toFixed(2) : "N/A"}
+            IDR {formatPrice(price)}
           </h5>
         </div>
         <p className="line-clamp-2 py-1">
@@ -48,6 +50,17 @@ const Item = ({ product }) => {
       </div>
     </div>
   );
+};
+
+Item.propTypes = {
+  product: PropTypes.shape({
+    _id: PropTypes.string,
+    name: PropTypes.string,
+    category: PropTypes.string,
+    price: PropTypes.number,
+    description: PropTypes.string,
+    image: PropTypes.array
+  })
 };
 
 export default Item;

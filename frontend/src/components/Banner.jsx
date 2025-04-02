@@ -1,6 +1,5 @@
-import React from "react";
-import banner1 from "../assets/electronics-banner-1.png";
-import banner2 from "../assets/electronics-banner-2.png";
+import banner1 from "../assets/banner-left.jpg";
+import banner2 from "../assets/banner-right.jpg";
 
 const Banner = () => {
   return (

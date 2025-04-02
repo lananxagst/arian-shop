@@ -162,4 +162,86 @@ const userDetail = async (req, res) => {
   }
 };
 
-export { loginUser, registerUser, googleLoginUser, adminLogin };
+// Get User Wishlist
+const getWishlist = async (req, res) => {
+  try {
+    const userId = req.user.id;  
+    const user = await userModel.findById(userId);
+    res.json({ success: true, wishlist: user.wishlist });
+  } catch (error) {
+    console.error("Error getting wishlist:", error);  
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Toggle Wishlist Item
+const toggleWishlistItem = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { productId } = req.body;
+    
+    if (!productId) {
+      return res.status(400).json({ success: false, message: "Product ID is required" });
+    }
+
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Check if product is already in wishlist
+    if (user.wishlist.includes(productId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Product already in wishlist",
+        wishlist: user.wishlist
+      });
+    }
+
+    // Add to wishlist
+    user.wishlist.push(productId);
+    
+    await user.save();
+    res.json({ success: true, wishlist: user.wishlist });
+  } catch (error) {
+    console.error("Error toggling wishlist:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Remove from Wishlist
+const removeFromWishlist = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { productId } = req.body;
+    
+    if (!productId) {
+      return res.status(400).json({ success: false, message: "Product ID is required" });
+    }
+
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const wishlistIndex = user.wishlist.indexOf(productId);
+    
+    if (wishlistIndex === -1) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Product not in wishlist",
+        wishlist: user.wishlist
+      });
+    }
+    
+    user.wishlist.splice(wishlistIndex, 1);
+    await user.save();
+    
+    res.json({ success: true, wishlist: user.wishlist });
+  } catch (error) {
+    console.error("Error removing from wishlist:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export { loginUser, registerUser, googleLoginUser, adminLogin, getWishlist, toggleWishlistItem, removeFromWishlist };

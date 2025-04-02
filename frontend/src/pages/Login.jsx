@@ -1,18 +1,61 @@
 import { useContext, useEffect, useState } from "react";
-import login from "../assets/arian-login.png";
+import login from "../assets/logo_baru.png";
 import { ShopContext } from "../context/ShopContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useGoogleLogin } from "@react-oauth/google";
 import { FcGoogle } from "react-icons/fc";
+import { useLocation } from "react-router-dom";
 
 const Login = () => {
   const [currState, setCurrState] = useState("Sign Up");
   const { token, setToken, navigate, backendUrl } = useContext(ShopContext);
 
+  const location = useLocation();
+  const returnTo = location.state?.returnTo || "/";
+  const directCheckout = location.state?.directCheckout || false;
+  const productId = location.state?.productId;
+  const color = location.state?.color;
+  const hasGuestCart = localStorage.getItem("guestCart") !== null;
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const handleSuccessfulAuth = async (newToken) => {
+    console.log("Login successful, setting token and syncing cart");
+    setToken(newToken);
+    localStorage.setItem("token", newToken);
+
+    // Set a flag in sessionStorage to indicate we're coming from login
+    // The Cart component will check for this flag and fetch updated cart data
+    if (hasGuestCart || returnTo === "/place-order") {
+      sessionStorage.setItem("fromLogin", "true");
+    }
+
+    // Small delay to allow context to update before navigation
+    setTimeout(() => {
+      // Handle direct checkout from product page
+      if (directCheckout && productId && color) {
+        // Navigate directly to place-order with the direct checkout parameters
+        navigate("/place-order", {
+          state: {
+            directCheckout: true,
+            productId: productId,
+            color: color,
+          },
+        });
+      }
+      // If there was a guest cart or the user was trying to check out,
+      else if (hasGuestCart || returnTo === "/place-order") {
+        toast.info("Please review your cart before checkout");
+        navigate("/cart");
+      } else {
+        // Otherwise, go to the originally requested page
+        navigate(returnTo);
+      }
+    }, 500);
+  };
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
@@ -25,8 +68,7 @@ const Login = () => {
         });
         console.log(response);
         if (response.data.success) {
-          setToken(response.data.token);
-          localStorage.setItem("token", response.data.token);
+          await handleSuccessfulAuth(response.data.token);
         } else {
           toast.error(response.data.message);
         }
@@ -36,8 +78,7 @@ const Login = () => {
           password,
         });
         if (response.data.success) {
-          setToken(response.data.token);
-          localStorage.setItem("token", response.data.token);
+          await handleSuccessfulAuth(response.data.token);
         } else {
           toast.error(response.data.message);
         }
@@ -71,9 +112,7 @@ const Login = () => {
         );
 
         if (loginResponse.data.success) {
-          setToken(loginResponse.data.token);
-          localStorage.setItem("token", loginResponse.data.token);
-          navigate("/");
+          await handleSuccessfulAuth(loginResponse.data.token);
         } else {
           toast.error(loginResponse.data.message);
         }
@@ -89,9 +128,16 @@ const Login = () => {
 
   useEffect(() => {
     if (token) {
-      navigate("/");
+      // If already logged in, redirect to the appropriate page
+      if (hasGuestCart || returnTo === "/place-order") {
+        // Set the flag before redirecting
+        sessionStorage.setItem("fromLogin", "true");
+        navigate("/cart");
+      } else {
+        navigate(returnTo);
+      }
     }
-  }, [token]);
+  }, [token, navigate, returnTo, hasGuestCart]);
 
   return (
     <div className="absolute top-0 left-0 h-full w-full z-50 bg-white">

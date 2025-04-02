@@ -1,4 +1,3 @@
-import React from "react";
 import { RiMoneyDollarCircleLine } from "react-icons/ri";
 import { TbTruckDelivery } from "react-icons/tb";
 import { BiSupport } from "react-icons/bi";

@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema(
     googleId: { type: String, default: null },
     avatar: { type: String, default: "" },
     cartData: { type: Object, default: {} },
+    wishlist: { type: [String], default: [] },
   },
   { minimize: false }
 );

@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import productModel from "../models/productModel.js";
+import axios from "axios";
 
 // CONTROLLER FUNCTION FOR ADDING PRODUCT
 const addProduct = async (req, res) => {
@@ -48,6 +49,53 @@ const addProduct = async (req, res) => {
 
     const product = new productModel(productData);
     await product.save();
+
+    // Send notification to subscribers about the new product
+    try {
+      // Get the server URL from the request
+      const protocol = req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      
+      // Make a direct call to the notification function instead of using axios
+      // This avoids issues with passing authorization headers
+      const notificationData = {
+        productId: product._id.toString(),
+        productName: product.name,
+        productImage: product.image[0], // Use the first image
+        productDescription: product.description
+      };
+
+      // Import the notification function directly
+      import('../controllers/subscriberController.js').then(subscriberController => {
+        // Create a mock request and response
+        const mockReq = {
+          body: notificationData,
+          user: req.user // Pass the authenticated user if available
+        };
+        
+        const mockRes = {
+          status: (code) => ({
+            json: (data) => {
+              console.log(`Notification response (${code}):`, data);
+            }
+          })
+        };
+        
+        // Call the notification function directly
+        subscriberController.notifyNewProduct(mockReq, mockRes).catch(err => {
+          console.error('Error in direct notification call:', err);
+        });
+        
+        console.log('Notification process started for new product');
+      }).catch(err => {
+        console.error('Failed to import subscriber controller:', err);
+      });
+      
+    } catch (notifyError) {
+      // Don't fail the product creation if notification fails
+      console.error('Failed to notify subscribers:', notifyError.message);
+    }
 
     res.json({ success: true, message: "Product Added" });
   } catch (error) {

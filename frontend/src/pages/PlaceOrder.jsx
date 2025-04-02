@@ -1,25 +1,62 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect, useCallback } from "react";
 import Title from "../components/Title";
 import CartTotal from "../components/CartTotal";
 import Footer from "../components/Footer";
 import { ShopContext } from "../context/ShopContext";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { useLocation } from "react-router-dom";
 
 const PlaceOrder = () => {
   const [method, setMethod] = useState("cod");
   const {
     navigate,
     products,
-    currency,
     delivery_charges,
     cartItems,
     setCartItems,
-    addToCart,
     getCartAmount,
     token,
     backendUrl,
   } = useContext(ShopContext);
+  const location = useLocation();
+  const directCheckout = location.state?.directCheckout || false;
+  const directCheckoutProductId = location.state?.productId;
+  const directCheckoutColor = location.state?.color;
+
+  // Function to explicitly fetch cart data from the server
+  const fetchCartData = useCallback(async () => {
+    try {
+      console.log("PlaceOrder: Fetching cart data with token:", token);
+      const response = await axios.post(
+        backendUrl + "/api/cart/get",
+        {},
+        { headers: { token } }
+      );
+      
+      console.log("PlaceOrder: Cart data response:", response.data);
+      
+      if (response.data.success) {
+        setCartItems(response.data.cartData);
+        console.log("PlaceOrder: Updated cart items:", response.data.cartData);
+      } else {
+        console.error("PlaceOrder: Failed to fetch cart data:", response.data.message);
+      }
+    } catch (error) {
+      console.error("PlaceOrder: Error fetching cart data:", error);
+    }
+  }, [backendUrl, token, setCartItems]);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!token) {
+      toast.info("Please login to continue with checkout");
+      navigate("/login", { state: { returnTo: "/place-order", directCheckout, productId: directCheckoutProductId, color: directCheckoutColor } });
+    } else {
+      // Explicitly fetch cart data when component mounts and user is logged in
+      fetchCartData();
+    }
+  }, [token, navigate, fetchCartData, directCheckout, directCheckoutProductId, directCheckoutColor]);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -45,25 +82,55 @@ const PlaceOrder = () => {
     try {
       let orderItems = [];
 
-      for (const items in cartItems) {
-        for (const item in cartItems[items]) {
-          if (cartItems[items][item] > 0) {
-            const itemInfo = structuredClone(
-              products.find((product) => product._id === items)
-            );
-            if (itemInfo) {
-              itemInfo.color = item;
-              itemInfo.quantity = cartItems[items][item];
-              orderItems.push(itemInfo);
+      if (directCheckout && directCheckoutProductId && directCheckoutColor) {
+        // For direct checkout, only include the specific product
+        const itemInfo = structuredClone(
+          products.find((product) => product._id === directCheckoutProductId)
+        );
+        if (itemInfo) {
+          itemInfo.color = directCheckoutColor;
+          itemInfo.quantity = 1; // Set quantity to 1 for direct checkout
+          // Multiply the price by 1000 to match what's displayed on the frontend
+          itemInfo.price = itemInfo.price * 1000;
+          orderItems.push(itemInfo);
+        }
+      } else {
+        // Regular checkout with all cart items
+        for (const items in cartItems) {
+          for (const item in cartItems[items]) {
+            if (cartItems[items][item] > 0) {
+              const itemInfo = structuredClone(
+                products.find((product) => product._id === items)
+              );
+              if (itemInfo) {
+                itemInfo.color = item;
+                itemInfo.quantity = cartItems[items][item];
+                // Multiply the price by 1000 to match what's displayed on the frontend
+                itemInfo.price = itemInfo.price * 1000;
+                orderItems.push(itemInfo);
+              }
             }
           }
         }
       }
 
+      // Calculate total amount
+      let totalAmount = 0;
+      if (directCheckout && orderItems.length === 1) {
+        // For direct checkout, calculate the amount for just this item
+        // Price is already multiplied by 1000 above
+        totalAmount = orderItems[0].price + (delivery_charges * 1000);
+      } else {
+        // Regular checkout, use the cart total
+        // getCartAmount returns the original price, so multiply by 1000
+        totalAmount = (getCartAmount() * 1000) + (delivery_charges * 1000);
+      }
+
       let orderData = {
+        userId: token,
         address: formData,
         items: orderItems,
-        amount: getCartAmount() + delivery_charges,
+        amount: totalAmount,
       };
 
       switch (method) {
@@ -75,7 +142,13 @@ const PlaceOrder = () => {
             { headers: { token } }
           );
           if (response.data.success) {
-            setCartItems({});
+            // Only clear the cart if it's not a direct checkout
+            if (!directCheckout) {
+              setCartItems({});
+            } else {
+              // For direct checkout, we might want to remove just that item from cart
+              // But since it was a direct checkout, we'll leave the cart as is
+            }
             navigate("/orders");
           } else {
             toast.error(response.data.message);
@@ -102,7 +175,6 @@ const PlaceOrder = () => {
           break;
       }
     } catch (error) {
-      console.log(error);
       toast.error(error.message);
     }
   };
