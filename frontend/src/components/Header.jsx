@@ -7,6 +7,7 @@ import { TbUserCircle } from "react-icons/tb";
 import { RiUserLine } from "react-icons/ri";
 import { ShopContext } from "../context/ShopContext";
 import { FaCartShopping } from "react-icons/fa6";
+import { toast } from "react-toastify";
 
 const Header = () => {
   const [menuOpened, setMenuOpened] = useState(false);
@@ -19,6 +20,7 @@ const Header = () => {
     localStorage.removeItem("token");
     setToken("");
     setUser(null);
+    toast.success("Logged out successfully!");
     navigate("/login");
   };
 

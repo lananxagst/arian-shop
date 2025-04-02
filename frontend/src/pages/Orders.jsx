@@ -6,12 +6,18 @@ import Footer from "../components/Footer";
 import { FaImage } from "react-icons/fa";
 
 const Orders = () => {
-  const { backendUrl, token, currency, formatPrice } = useContext(ShopContext);
+  const { backendUrl, token, currency } = useContext(ShopContext);
   const [orderData, setOrderData] = useState([]);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [selectedEvidence, setSelectedEvidence] = useState(null);
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [selectedOrderStatus, setSelectedOrderStatus] = useState(null);
+
+  // Format order price without multiplying by 1000 again
+  const formatOrderPrice = (price) => {
+    if (typeof price !== 'number') return "N/A";
+    return price.toLocaleString('id-ID').replace(',', '.');
+  };
 
   const loadOrderData = useCallback(async () => {
     try {
@@ -129,7 +135,7 @@ const Orders = () => {
                             <h5 className="medium-14">Price:</h5>
                             <p>
                               {currency}
-                              {formatPrice(item.price)}
+                              {formatOrderPrice(item.price)}
                             </p>
                           </div>
                           <div className="flexCenter gap-x-2">
