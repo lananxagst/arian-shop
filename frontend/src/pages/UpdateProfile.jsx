@@ -45,11 +45,14 @@ const EditProfile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Show loading toast
+      const loadingToast = toast.loading("Updating profile...");
+      
       const formData = new FormData();
       formData.append("name", user.name);
-      formData.append("bio", user.bio);
-      formData.append("phone", user.phone);
-      formData.append("address", user.address);
+      formData.append("bio", user.bio || "");
+      formData.append("phone", user.phone || "");
+      formData.append("address", user.address || "");
       
       // Only include password if it's not empty
       if (user.password && user.password.trim() !== "") {
@@ -57,22 +60,35 @@ const EditProfile = () => {
         console.log("Including password in update");
       }
       
+      // Log form data contents for debugging
+      console.log("Form data fields:", [...formData.entries()].map(entry => entry[0]));
+      
+      // Handle file upload
       if (user.avatar instanceof File) {
+        console.log("Uploading file:", {
+          name: user.avatar.name,
+          type: user.avatar.type,
+          size: user.avatar.size
+        });
         formData.append("avatar", user.avatar);
+      } else {
+        console.log("No new avatar file to upload");
       }
 
+      // Make sure we're not setting Content-Type manually as it needs to include the boundary
+      // Let axios set it automatically for FormData
       const res = await api.put(
         '/api/user/update',
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+        formData
       );
 
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+      
       if (res.data.success) {
         toast.success("Profile updated successfully");
+        console.log("Profile updated:", res.data);
+        
         // Clear password field after successful update
         setUser({ ...user, password: "" });
         
@@ -82,8 +98,14 @@ const EditProfile = () => {
         }, 1000); // Short delay to allow the toast to be seen
       }
     } catch (error) {
-      console.error("Error updating profile", error);
-      toast.error("Failed to update profile: " + (error.response?.data?.message || error.message));
+      console.error("Error updating profile:", error);
+      
+      // Get detailed error information
+      const errorMessage = error.response?.data?.message || error.message;
+      const errorDetails = error.response?.data?.error || 'Unknown error';
+      console.error("Error details:", { message: errorMessage, details: errorDetails });
+      
+      toast.error(`Failed to update profile: ${errorMessage}`);
     }
   };
 
