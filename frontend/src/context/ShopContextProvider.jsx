@@ -11,8 +11,9 @@ const ShopContextProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState({});
   const [wishlist, setWishlist] = useState([]);
   const [token, setToken] = useState("");
-  // isCartSyncing is used in the syncGuestCartToServer function
   const [isCartSyncing, setIsCartSyncing] = useState(false);
+  // Add a refreshTrigger state to force re-fetching data
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const navigate = useNavigate();
   const currency = "IDR";
   const delivery_charges = 10;
@@ -136,17 +137,31 @@ const ShopContextProvider = ({ children }) => {
   // GETTING USER WISHLIST
   const getWishlist = useCallback(async () => {
     try {
-      console.log("Fetching wishlist with token:", token);
-      const response = await api.get("/api/user/wishlist");
-      console.log("Wishlist response:", response.data);
+      if (!token) {
+        console.log("No token, skipping getWishlist");
+        return;
+      }
+      
+      console.log("Getting wishlist with token:", token);
+      const response = await api.get("/api/user/wishlist/get");
+      console.log("Get wishlist response:", response.data);
+      
       if (response.data.success) {
-        setWishlist(response.data.wishlist);
+        // Create a new array to ensure React detects the change
+        const newWishlist = [...response.data.wishlist];
+        setWishlist(newWishlist);
+        
+        // Store in localStorage for quick access
+        localStorage.setItem('userWishlist', JSON.stringify(newWishlist));
+        localStorage.setItem('wishlistLastUpdated', Date.now());
       }
     } catch (error) {
       console.log(error);
       toast.error(error.message);
     }
-  }, [token]);
+    // refreshTrigger is intentionally not included in the dependency array
+    // It's used in the refreshUserData function to trigger this function
+  }, [token]); // Remove refreshTrigger from dependencies
 
   // ADDING ITEMS TO WISHLIST
   const toggleWishlist = async (productId) => {
@@ -258,13 +273,21 @@ const ShopContextProvider = ({ children }) => {
       );
       console.log("Get cart response:", response.data);
       if (response.data.success) {
-        setCartItems(response.data.cartData);
+        // Create a new object to ensure React detects the change
+        const newCartData = JSON.parse(JSON.stringify(response.data.cartData));
+        setCartItems(newCartData);
+        
+        // Store in localStorage for quick access
+        localStorage.setItem('userCart', JSON.stringify(newCartData));
+        localStorage.setItem('cartLastUpdated', Date.now());
       }
     } catch (error) {
       console.log(error);
       toast.error(error.message);
     }
-  }, [token]);
+    // refreshTrigger is intentionally not included in the dependency array
+    // It's used in the refreshUserData function to trigger this function
+  }, [token]); // Remove refreshTrigger from dependencies
 
   // SYNC GUEST CART TO SERVER AFTER LOGIN
   const syncGuestCartToServer = useCallback(async () => {
@@ -355,10 +378,8 @@ const ShopContextProvider = ({ children }) => {
     
     // Check for token in localStorage
     const storedToken = localStorage.getItem("token");
-    if (storedToken && !token) {
-      console.log("Setting token from localStorage:", storedToken);
+    if (storedToken) {
       setToken(storedToken);
-      return; // Exit early, the next effect run will handle cart loading
     }
     
     // Load guest cart from localStorage if not logged in
@@ -394,6 +415,39 @@ const ShopContextProvider = ({ children }) => {
     }
   }, [token, getUserCart, getWishlist, syncGuestCartToServer]);
 
+  // Add a function to refresh all user data
+  const refreshUserData = useCallback(() => {
+    if (token) {
+      // Increment the refresh trigger to force re-fetching
+      setRefreshTrigger(prev => prev + 1);
+      getUserCart();
+      getWishlist();
+      
+      // Set a flag in localStorage to indicate data is being refreshed
+      localStorage.setItem('dataRefreshing', 'true');
+      localStorage.setItem('lastRefreshTime', Date.now());
+    }
+  }, [token, getUserCart, getWishlist]);
+
+  // Set up a listener for route changes to refresh data
+  useEffect(() => {
+    const handleRouteChange = () => {
+      console.log('Route changed, refreshing data');
+      // Only refresh if we haven't refreshed in the last 2 seconds
+      const lastRefresh = localStorage.getItem('lastRefreshTime');
+      if (!lastRefresh || (Date.now() - parseInt(lastRefresh)) > 2000) {
+        refreshUserData();
+      }
+    };
+    
+    // Listen for navigation events
+    window.addEventListener('popstate', handleRouteChange);
+    
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+    };
+  }, [refreshUserData]);
+
   const value = {
     navigate,
     products,
@@ -416,6 +470,10 @@ const ShopContextProvider = ({ children }) => {
     isInWishlist,
     clearCart,
     formatPrice,
+    refreshUserData,
+    isCartSyncing,
+    refreshTrigger,
+    setRefreshTrigger
   };
 
   return (

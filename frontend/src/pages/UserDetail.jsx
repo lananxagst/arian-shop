@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useCallback } from "react";
 import api from "../utils/api";
 import { getImageUrl } from "../utils/imageHelper";
 import Footer from "../components/Footer";
@@ -8,7 +8,7 @@ import { FaTrash } from "react-icons/fa";
 
 const UserDetail = () => {
   const [user, setUser] = useState(null);
-  const { cartItems, products, wishlist, currency, backendUrl, token, clearCart, removeFromWishlist, formatPrice } = useContext(ShopContext);
+  const { cartItems, products, wishlist, currency, backendUrl, token, clearCart, removeFromWishlist, formatPrice, refreshUserData, refreshTrigger } = useContext(ShopContext);
   const [activeTab, setActiveTab] = useState("account");
   const [orderData, setOrderData] = useState([]);
   const [isWishlistEmpty, setIsWishlistEmpty] = useState(true);
@@ -75,73 +75,100 @@ const UserDetail = () => {
     navigate('/place-order');
   };
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        setIsLoading(true);
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-        
-        const res = await api.get('/api/user/me');
-        
-        if (res.data.success) {
-          console.log('User data from API:', res.data.user);
-          console.log('Avatar URL from API:', res.data.user.avatar);
-          
-          // Make sure we're using the latest avatar URL
-          // This is especially important after a profile update
-          const userData = res.data.user;
-          
-          // Force a refresh of the component by setting a new object
-          setUser({...userData});
-        }
+  // Function to fetch user data - wrapped in useCallback to prevent recreation on every render
+  const fetchUserData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      if (!token) {
         setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching user details", error);
-        setIsLoading(false);
+        return;
       }
-    };
+      
+      const res = await api.get('/api/user/me');
+      
+      if (res.data.success) {
+        console.log('User data from API:', res.data.user);
+        console.log('Avatar URL from API:', res.data.user.avatar);
+        
+        // Make sure we're using the latest avatar URL
+        // This is especially important after a profile update
+        const userData = res.data.user;
+        
+        // Force a refresh of the component by setting a new object
+        setUser({...userData});
+      }
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching user details", error);
+      setIsLoading(false);
+    }
+  }, [token]); // Only recreate if token changes
 
-    const loadOrderData = async () => {
-      try {
-        setIsLoading(true);
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-        
-        const response = await api.post(
-          '/api/order/userorders',
-          {}
-        );
-        
-        if (response.data.success) {
-          let allOrdersItem = [];
-          response.data.orders.map((order) => {
-            order.items.map((item) => {
-              item["status"] = order.status;
-              item["payment"] = order.payment;
-              item["paymentMethod"] = order.paymentMethod;
-              item["date"] = order.date;
-              allOrdersItem.push(item);
-            });
+  // Function to load order data - wrapped in useCallback to prevent recreation on every render
+  const loadOrderData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      if (!token) {
+        console.log("No token, skipping loadOrderData");
+        setIsLoading(false);
+        return;
+      }
+      
+      const response = await api.post(
+        '/api/order/userorders',
+        {}
+      );
+      
+      if (response.data.success) {
+        let allOrdersItem = [];
+        response.data.orders.forEach((order) => {
+          order.items.forEach((item) => {
+            item["status"] = order.status;
+            item["payment"] = order.payment;
+            item["paymentMethod"] = order.paymentMethod;
+            item["date"] = order.date;
+            allOrdersItem.push(item);
           });
-          setOrderData(allOrdersItem.reverse());
-        }
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching orders:", error);
-        setIsLoading(false);
+        });
+        
+        // Create a new array to ensure React detects the change
+        const newOrders = allOrdersItem.reverse();
+        setOrderData(newOrders);
+        
+        // Store in localStorage for quick access
+        localStorage.setItem('userOrders', JSON.stringify(newOrders));
+        localStorage.setItem('ordersLastUpdated', Date.now());
       }
-    };
-
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      setIsLoading(false);
+    }
+  }, [token]); // Only recreate if token changes
+  
+  // Effect to load data when component mounts or dependencies change
+  useEffect(() => {
     if (token) {
       fetchUserData();
       loadOrderData();
+      // Also refresh the cart and wishlist data
+      refreshUserData();
     }
-  }, [token, backendUrl, forceRefresh]);
+  }, [token, backendUrl, forceRefresh, refreshTrigger, refreshUserData, fetchUserData, loadOrderData]);
+
+  const handleTabClick = (tab) => {
+    setActiveTab(tab);
+    
+    // Refresh data when switching tabs
+    if (tab === "orders") {
+      // Use a small delay to ensure the component is fully rendered
+      setTimeout(() => {
+        if (token) loadOrderData();
+      }, 100);
+    } else if (tab === "wishlist" || tab === "cart") {
+      refreshUserData();
+    }
+  };
 
   if (isLoading)
     return <p className="text-gray-30 text-center mt-10">Loading...</p>;
@@ -176,7 +203,7 @@ const UserDetail = () => {
               <p className="text-gray-20">{user.bio || "No bio available"}</p>
               <div className="w-full mt-6 space-y-2">
                 <button 
-                  onClick={() => setActiveTab("account")}
+                  onClick={() => handleTabClick("account")}
                   className={`w-full py-2 px-4 rounded-lg transition-colors ${
                     activeTab === "account" 
                       ? "bg-gray-900 text-white" 
@@ -186,7 +213,7 @@ const UserDetail = () => {
                   Account
                 </button>
                 <button 
-                  onClick={() => setActiveTab("wishlist")}
+                  onClick={() => handleTabClick("wishlist")}
                   className={`w-full py-2 px-4 rounded-lg transition-colors ${
                     activeTab === "wishlist" 
                       ? "bg-gray-900 text-white" 
@@ -196,7 +223,7 @@ const UserDetail = () => {
                   Wish List
                 </button>
                 <button 
-                  onClick={() => setActiveTab("orders")}
+                  onClick={() => handleTabClick("orders")}
                   className={`w-full py-2 px-4 rounded-lg transition-colors ${
                     activeTab === "orders" 
                       ? "bg-gray-900 text-white" 
@@ -206,7 +233,7 @@ const UserDetail = () => {
                   Orders
                 </button>
                 <button 
-                  onClick={() => setActiveTab("cart")}
+                  onClick={() => handleTabClick("cart")}
                   className={`w-full py-2 px-4 rounded-lg transition-colors ${
                     activeTab === "cart" 
                       ? "bg-gray-900 text-white" 
