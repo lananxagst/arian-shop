@@ -27,10 +27,17 @@ const UserDetail = () => {
     if (!user) return '';
     
     if (user.avatar) {
-      return getImageUrl(user.avatar, `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        user?.name || 'User'
-      )}&background=6D28D9&color=ffffff&size=128`);
+      // If it's a Cloudinary URL (starts with https://res.cloudinary.com), use it directly
+      if (user.avatar.includes('cloudinary.com')) {
+        console.log('Using Cloudinary image URL:', user.avatar);
+        return user.avatar;
+      }
+      
+      // Otherwise use the image helper
+      return getImageUrl(user.avatar, user.name);
     }
+    
+    // Fallback to UI Avatars
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
       user?.name || 'User'
     )}&background=6D28D9&color=ffffff&size=128`;
