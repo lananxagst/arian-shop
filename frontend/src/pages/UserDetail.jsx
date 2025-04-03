@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext, useCallback } from "react";
+import { useEffect, useState, useContext } from "react";
 import api from "../utils/api";
 import { getImageUrl } from "../utils/imageHelper";
 import Footer from "../components/Footer";
@@ -7,8 +7,19 @@ import { ShopContext } from "../context/ShopContext";
 import { FaTrash } from "react-icons/fa";
 
 const UserDetail = () => {
-  const [user, setUser] = useState(null);
-  const { cartItems, products, wishlist, currency, backendUrl, token, clearCart, removeFromWishlist, formatPrice, refreshUserData, refreshTrigger } = useContext(ShopContext);
+  const { 
+    cartItems, 
+    products, 
+    wishlist, 
+    currency, 
+    token, 
+    clearCart, 
+    removeFromWishlist, 
+    formatPrice, 
+    userData, 
+    getUserProfile 
+  } = useContext(ShopContext);
+  
   const [activeTab, setActiveTab] = useState("account");
   const [orderData, setOrderData] = useState([]);
   const [isWishlistEmpty, setIsWishlistEmpty] = useState(true);
@@ -22,16 +33,15 @@ const UserDetail = () => {
   // Check if wishlist is empty whenever it changes
   useEffect(() => {
     if (wishlist && Array.isArray(wishlist)) {
-      console.log("Wishlist state changed:", wishlist);
       setIsWishlistEmpty(wishlist.length === 0);
     }
   }, [wishlist]);
 
   const getProfileImage = () => {
-    if (!user) return '';
+    if (!userData) return '';
     
-    console.log('Getting profile image for user:', user.name);
-    console.log('Avatar value:', user.avatar);
+    console.log('Getting profile image for user:', userData.name);
+    console.log('Avatar value:', userData.avatar);
     
     // Force refresh the component when avatar changes
     // Add a timestamp to the URL to prevent caching
@@ -47,19 +57,19 @@ const UserDetail = () => {
       return `${cloudinaryUrl}?t=${timestamp}`;
     }
     
-    if (user.avatar) {
+    if (userData.avatar) {
       // If it's a Cloudinary URL, use it directly with a cache-busting parameter
-      if (user.avatar.includes('cloudinary.com')) {
-        const url = `${user.avatar}?t=${timestamp}`;
+      if (userData.avatar.includes('cloudinary.com')) {
+        const url = `${userData.avatar}?t=${timestamp}`;
         console.log('Using Cloudinary image URL from user data:', url);
         return url;
       }
       
       // Log the type of avatar value
-      console.log('Avatar type:', typeof user.avatar);
+      console.log('Avatar type:', typeof userData.avatar);
       
       // Otherwise use the image helper
-      const imageUrl = getImageUrl(user.avatar, user.name);
+      const imageUrl = getImageUrl(userData.avatar, userData.name);
       console.log('Image URL after helper:', imageUrl);
       return imageUrl;
     }
@@ -67,7 +77,7 @@ const UserDetail = () => {
     // Fallback to UI Avatars
     console.log('No avatar found, using fallback');
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      user?.name || 'User'
+      userData?.name || 'User'
     )}&background=6D28D9&color=ffffff&size=128`;
   };
 
@@ -75,93 +85,41 @@ const UserDetail = () => {
     navigate('/place-order');
   };
 
-  // Function to fetch user data - wrapped in useCallback to prevent recreation on every render
-  const fetchUserData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-      
-      // Try to get cached user data from localStorage first
-      const cachedUser = localStorage.getItem('userData');
-      if (cachedUser) {
-        try {
-          const parsedUser = JSON.parse(cachedUser);
-          setUser(parsedUser);
-        } catch (parseError) {
-          console.error("Error parsing cached user data:", parseError);
-        }
-      }
-      
-      // Set a timeout to prevent hanging indefinitely
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
+  useEffect(() => {
+    const refreshUserData = () => {
       try {
-        const res = await api.get('/api/user/me', { signal: controller.signal });
-        clearTimeout(timeoutId);
+        setIsLoading(true);
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
         
-        if (res.data.success) {
-          const userData = {...res.data.user};
-          setUser(userData);
-          
-          // Cache the user data
-          localStorage.setItem('userData', JSON.stringify(userData));
-          localStorage.setItem('userDataLastUpdated', Date.now());
-        }
-      } catch (apiError) {
-        console.error("API Error fetching user details:", apiError);
-        // If we have cached data, don't show an error toast
-        if (!cachedUser) {
-          // toast.error("Could not load user data. Using cached data if available.");
-        }
-      }
-      
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error in fetchUserData:", error);
-      setIsLoading(false);
-    }
-  }, [token]); // Only recreate if token changes
-
-  // Function to load order data - wrapped in useCallback to prevent recreation on every render
-  const loadOrderData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      if (!token) {
+        // Use the context function to refresh user data
+        getUserProfile();
         setIsLoading(false);
-        return;
+      } catch (error) {
+        console.error("Error refreshing user details", error);
+        setIsLoading(false);
       }
-      
-      // Try to get cached orders from localStorage first
-      const cachedOrders = localStorage.getItem('userOrders');
-      if (cachedOrders) {
-        try {
-          const parsedOrders = JSON.parse(cachedOrders);
-          setOrderData(parsedOrders);
-        } catch (parseError) {
-          console.error("Error parsing cached orders:", parseError);
-        }
-      }
-      
-      // Set a timeout to prevent hanging indefinitely
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
+    };
+
+    const loadOrderData = async () => {
       try {
+        setIsLoading(true);
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
+        
         const response = await api.post(
           '/api/order/userorders',
-          {},
-          { signal: controller.signal }
+          {}
         );
-        clearTimeout(timeoutId);
         
         if (response.data.success) {
           let allOrdersItem = [];
-          response.data.orders.forEach((order) => {
-            order.items.forEach((item) => {
+          response.data.orders.map((order) => {
+            order.items.map((item) => {
               item["status"] = order.status;
               item["payment"] = order.payment;
               item["paymentMethod"] = order.paymentMethod;
@@ -169,55 +127,25 @@ const UserDetail = () => {
               allOrdersItem.push(item);
             });
           });
-          
-          // Create a new array to ensure React detects the change
-          const newOrders = allOrdersItem.reverse();
-          setOrderData(newOrders);
-          
-          // Store in localStorage for quick access
-          localStorage.setItem('userOrders', JSON.stringify(newOrders));
-          localStorage.setItem('ordersLastUpdated', Date.now());
+          setOrderData(allOrdersItem.reverse());
         }
-      } catch (apiError) {
-        console.error("API Error fetching orders:", apiError);
-        // We already have displayed cached data if available, so no need for a toast
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error in loadOrderData:", error);
-      setIsLoading(false);
-    }
-  }, [token]); // Only recreate if token changes
-  
-  // Effect to load data when component mounts or dependencies change
-  useEffect(() => {
-    if (token) {
-      fetchUserData();
-      loadOrderData();
-      // Also refresh the cart and wishlist data
-      refreshUserData();
-    }
-  }, [token, backendUrl, forceRefresh, refreshTrigger, refreshUserData, fetchUserData, loadOrderData]);
+    };
 
-  const handleTabClick = (tab) => {
-    setActiveTab(tab);
-    
-    // Refresh data when switching tabs
-    if (tab === "orders") {
-      // Use a small delay to ensure the component is fully rendered
-      setTimeout(() => {
-        if (token) loadOrderData();
-      }, 100);
-    } else if (tab === "wishlist" || tab === "cart") {
+    if (token) {
       refreshUserData();
+      loadOrderData();
     }
-  };
+  }, [token, forceRefresh, getUserProfile]);
 
   if (isLoading)
     return <p className="text-gray-30 text-center mt-10">Loading...</p>;
 
-  if (!user)
+  if (!userData)
     return <p className="text-gray-30 text-center mt-10">User not found.</p>;
 
   return (
@@ -227,27 +155,32 @@ const UserDetail = () => {
           {/* Left Sidebar - Profile Info */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex flex-col items-center">
-              <div className="relative">
+              <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-200 mb-2">
                 <img
                   src={getProfileImage()}
-                  alt="Profile"
-                  className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md"
-                  referrerPolicy="no-referrer"
+                  alt={userData.name}
+                  className="w-full h-full object-cover"
                 />
-                <Link 
-                  to="/update-profile" 
-                  className="absolute bottom-0 right-0 bg-secondary text-white p-2 rounded-full shadow-lg hover:bg-tertiary transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                <div className="absolute bottom-0 right-0 bg-green-500 rounded-full p-1">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 text-white"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
                   </svg>
-                </Link>
+                </div>
               </div>
-              <h2 className="mt-4 text-2xl font-semibold text-secondary">{user.name || "User"}</h2>
-              <p className="text-gray-20">{user.bio || "No bio available"}</p>
+              <h2 className="text-lg font-semibold">{userData.name}</h2>
+              <p className="text-gray-500 text-sm">{userData.bio || ""}</p>
               <div className="w-full mt-6 space-y-2">
                 <button 
-                  onClick={() => handleTabClick("account")}
+                  onClick={() => setActiveTab("account")}
                   className={`w-full py-2 px-4 rounded-lg transition-colors ${
                     activeTab === "account" 
                       ? "bg-gray-900 text-white" 
@@ -257,7 +190,7 @@ const UserDetail = () => {
                   Account
                 </button>
                 <button 
-                  onClick={() => handleTabClick("wishlist")}
+                  onClick={() => setActiveTab("wishlist")}
                   className={`w-full py-2 px-4 rounded-lg transition-colors ${
                     activeTab === "wishlist" 
                       ? "bg-gray-900 text-white" 
@@ -267,7 +200,7 @@ const UserDetail = () => {
                   Wish List
                 </button>
                 <button 
-                  onClick={() => handleTabClick("orders")}
+                  onClick={() => setActiveTab("orders")}
                   className={`w-full py-2 px-4 rounded-lg transition-colors ${
                     activeTab === "orders" 
                       ? "bg-gray-900 text-white" 
@@ -277,7 +210,7 @@ const UserDetail = () => {
                   Orders
                 </button>
                 <button 
-                  onClick={() => handleTabClick("cart")}
+                  onClick={() => setActiveTab("cart")}
                   className={`w-full py-2 px-4 rounded-lg transition-colors ${
                     activeTab === "cart" 
                       ? "bg-gray-900 text-white" 
@@ -300,7 +233,7 @@ const UserDetail = () => {
                     <label className="block text-sm font-medium text-gray-30 mb-2">Name</label>
                     <input
                       type="text"
-                      value={user.name || ""}
+                      value={userData.name || ""}
                       readOnly
                       className="w-full px-4 py-2 border border-gray-10 rounded-lg bg-primary"
                     />
@@ -309,7 +242,7 @@ const UserDetail = () => {
                     <label className="block text-sm font-medium text-gray-30 mb-2">Email</label>
                     <input
                       type="email"
-                      value={user.email || ""}
+                      value={userData.email || ""}
                       readOnly
                       className="w-full px-4 py-2 border border-gray-10 rounded-lg bg-primary"
                     />
@@ -318,7 +251,7 @@ const UserDetail = () => {
                     <label className="block text-sm font-medium text-gray-30 mb-2">Phone</label>
                     <input
                       type="text"
-                      value={user.phone || "Not provided"}
+                      value={userData.phone || "Not provided"}
                       readOnly
                       className="w-full px-4 py-2 border border-gray-10 rounded-lg bg-primary"
                     />
@@ -327,7 +260,7 @@ const UserDetail = () => {
                     <label className="block text-sm font-medium text-gray-30 mb-2">Address</label>
                     <input
                       type="text"
-                      value={user.address || "Not provided"}
+                      value={userData.address || "Not provided"}
                       readOnly
                       className="w-full px-4 py-2 border border-gray-10 rounded-lg bg-primary"
                     />

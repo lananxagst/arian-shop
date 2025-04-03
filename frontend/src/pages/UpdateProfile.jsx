@@ -1,11 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from '../utils/api';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
+import { ShopContext } from "../context/ShopContext";
 
 const EditProfile = () => {
   const navigate = useNavigate();
+  const { userData, updateUserData, getUserProfile } = useContext(ShopContext);
+  
+  // Local state for form values
   const [user, setUser] = useState({
     name: "",
     email: "",
@@ -16,23 +20,19 @@ const EditProfile = () => {
     avatar: "",
   });
 
+  // Initialize form with userData from context
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const res = await api.get('/api/user/me');
-
-        console.log("User API response:", res.data);
-        if (res.data.success) {
-          console.log("User data:", res.data.user);
-          setUser({ ...res.data.user, password: "" }); // Kosongkan password untuk keamanan
-        }
-      } catch (error) {
-        console.error("Error fetching user data", error);
-        toast.error("Failed to load user data");
-      }
-    };
-    fetchUserData();
-  }, []);
+    if (userData) {
+      console.log("Setting form data from context userData:", userData);
+      setUser({ 
+        ...userData, 
+        password: "" // Empty password for security
+      });
+    } else {
+      // If userData is not available in context, fetch it
+      getUserProfile();
+    }
+  }, [userData, getUserProfile]);
 
   const handleChange = (e) => {
     if (e.target.name === "avatar") {
@@ -118,6 +118,9 @@ const EditProfile = () => {
               // Update the user state with the new avatar URL
               setUser(prev => ({ ...prev, avatar: cloudinaryUrl }));
               
+              // Update the global user data context
+              updateUserData({ avatar: cloudinaryUrl });
+              
               // Store the Cloudinary URL and timestamp in localStorage
               // This allows immediate use of the new avatar before the backend update is reflected
               localStorage.setItem('cloudinary_avatar_url', cloudinaryUrl);
@@ -133,10 +136,11 @@ const EditProfile = () => {
           toast.success("Profile updated successfully");
         }
         
-        console.log("Profile updated:", res.data);
+        // Update the user state with the response data
+        setUser(prev => ({ ...prev, ...userData }));
         
-        // Clear password field after successful update
-        setUser({ ...user, password: "", avatarFile: null });
+        // Update the global user data context
+        updateUserData(userData);
         
         // Redirect to UserDetail page after successful update
         setTimeout(() => {
