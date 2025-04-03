@@ -141,12 +141,12 @@ const ShopContextProvider = ({ children }) => {
       console.log("Wishlist response:", response.data);
       if (response.data.success) {
         setWishlist(response.data.wishlist);
-        console.log("Wishlist set to:", response.data.wishlist);
       }
     } catch (error) {
-      console.error("Error fetching wishlist:", error);
+      console.log(error);
+      toast.error(error.message);
     }
-  }, [backendUrl, token]);
+  }, [token]);
 
   // ADDING ITEMS TO WISHLIST
   const toggleWishlist = async (productId) => {
@@ -247,7 +247,7 @@ const ShopContextProvider = ({ children }) => {
   const getUserCart = useCallback(async () => {
     try {
       if (!token) {
-        console.log("No token available, skipping getUserCart");
+        console.log("No token, skipping getUserCart");
         return;
       }
       
@@ -259,46 +259,39 @@ const ShopContextProvider = ({ children }) => {
       console.log("Get cart response:", response.data);
       if (response.data.success) {
         setCartItems(response.data.cartData);
-        return response.data.cartData;
       }
-      return null;
     } catch (error) {
-      console.log("Error getting user cart:", error);
-      toast.error("Failed to get your cart");
-      return null;
+      console.log(error);
+      toast.error(error.message);
     }
-  }, [backendUrl, token]);
+  }, [token]);
 
-  // SYNC GUEST CART WITH USER CART AFTER LOGIN
-  const syncGuestCartWithUserCart = useCallback(async () => {
-    if (isCartSyncing) {
-      console.log("Cart sync already in progress, skipping");
-      return;
-    }
-    
+  // SYNC GUEST CART TO SERVER AFTER LOGIN
+  const syncGuestCartToServer = useCallback(async () => {
     try {
-      setIsCartSyncing(true);
-      console.log("Starting cart sync process");
+      if (!token) {
+        console.log("No token, skipping syncGuestCartToServer");
+        return;
+      }
       
+      // Get guest cart from localStorage
       const guestCartString = localStorage.getItem('guestCart');
       if (!guestCartString) {
-        console.log("No guest cart found in localStorage");
-        setIsCartSyncing(false);
+        console.log("No guest cart found");
         return;
       }
       
       const guestCart = JSON.parse(guestCartString);
+      console.log("Guest cart found:", guestCart);
+      
+      // Check if guest cart is empty
       if (Object.keys(guestCart).length === 0) {
         console.log("Guest cart is empty");
-        setIsCartSyncing(false);
         return;
       }
       
-      console.log("Syncing guest cart with token:", token);
-      console.log("Guest cart data:", guestCart);
-      
-      // Instead of clearing the server cart first, let's add items one by one
-      // This way we preserve any items already in the user's cart
+      setIsCartSyncing(true);
+      toast.info("Syncing your cart...");
       
       // For each item in guest cart, add to user cart
       const updatePromises = [];
@@ -317,28 +310,24 @@ const ShopContextProvider = ({ children }) => {
         }
       }
       
-      // Wait for all updates to complete
       await Promise.all(updatePromises);
-      console.log("All items added to server cart");
+      console.log("All items synced to server");
       
-      // Clear guest cart after syncing
+      // Clear guest cart
       localStorage.removeItem('guestCart');
-      console.log("Cleared guest cart from localStorage");
       
-      // Get updated cart from server
-      const updatedCart = await getUserCart();
-      console.log("Updated cart from server:", updatedCart);
+      // Refresh cart from server
+      await getUserCart();
       
-      if (updatedCart) {
-        toast.success("Your cart has been restored");
-      }
+      setIsCartSyncing(false);
+      toast.success("Your cart has been synced!");
+      
     } catch (error) {
-      console.error("Failed to sync cart:", error);
+      console.error("Error syncing guest cart:", error);
       toast.error("Failed to sync your cart");
-    } finally {
       setIsCartSyncing(false);
     }
-  }, [backendUrl, token, getUserCart, isCartSyncing]);
+  }, [token, getUserCart]);
 
   // CLEAR CART
   const clearCart = async () => {
@@ -400,10 +389,10 @@ const ShopContextProvider = ({ children }) => {
       const hasGuestCart = localStorage.getItem('guestCart');
       if (hasGuestCart) {
         console.log("Found guest cart, syncing...");
-        syncGuestCartWithUserCart();
+        syncGuestCartToServer();
       }
     }
-  }, [token, getUserCart, getWishlist, syncGuestCartWithUserCart]);
+  }, [token, getUserCart, getWishlist, syncGuestCartToServer]);
 
   const value = {
     navigate,
