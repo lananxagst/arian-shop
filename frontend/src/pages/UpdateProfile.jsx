@@ -99,12 +99,16 @@ const EditProfile = () => {
             const avatarToast = toast.loading("Uploading profile picture...");
             
             // Upload directly to Cloudinary
+            console.log('Uploading file to Cloudinary:', user.avatarFile.name);
             const cloudinaryUrl = await uploadToCloudinary(user.avatarFile);
+            console.log('Received Cloudinary URL:', cloudinaryUrl);
             
             // Update the user profile with the new avatar URL
+            console.log('Updating profile with new avatar URL:', cloudinaryUrl);
             const avatarUpdateRes = await api.put('/api/user/update', {
               avatar: cloudinaryUrl
             });
+            console.log('Avatar update response:', avatarUpdateRes.data);
             
             // Dismiss the loading toast
             toast.dismiss(avatarToast);
