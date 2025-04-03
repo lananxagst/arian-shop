@@ -10,16 +10,28 @@ const UserDetail = () => {
   const { cartItems, products, wishlist, currency, backendUrl, token, clearCart, removeFromWishlist, formatPrice } = useContext(ShopContext);
   const [activeTab, setActiveTab] = useState("account");
   const [orderData, setOrderData] = useState([]);
+  const [isWishlistEmpty, setIsWishlistEmpty] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Check if wishlist is empty whenever it changes
+  useEffect(() => {
+    if (wishlist && Array.isArray(wishlist)) {
+      console.log("Wishlist state changed:", wishlist);
+      setIsWishlistEmpty(wishlist.length === 0);
+    }
+  }, [wishlist]);
+
   const getProfileImage = () => {
+    if (!user) return '';
+    
     if (user.avatar) {
       return user.avatar.startsWith("http")
         ? user.avatar
         : `${backendUrl}${user.avatar}`;
     }
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      user.name || 'User'
+      user?.name || 'User'
     )}&background=6D28D9&color=ffffff&size=128`;
   };
 
@@ -30,26 +42,40 @@ const UserDetail = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        if (!token) return;
+        setIsLoading(true);
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
+        
         const res = await axios.get(`${backendUrl}/api/user/me`, {
           headers: { Authorization: `Bearer ${token}` }  
         });
+        
         if (res.data.success) {
           setUser(res.data.user);
         }
+        setIsLoading(false);
       } catch (error) {
         console.error("Error fetching user details", error);
+        setIsLoading(false);
       }
     };
 
     const loadOrderData = async () => {
       try {
-        if (!token) return;
+        setIsLoading(true);
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
+        
         const response = await axios.post(
           `${backendUrl}/api/order/userorders`,
           {},
           { headers: { token } }  
         );
+        
         if (response.data.success) {
           let allOrdersItem = [];
           response.data.orders.map((order) => {
@@ -63,8 +89,10 @@ const UserDetail = () => {
           });
           setOrderData(allOrdersItem.reverse());
         }
+        setIsLoading(false);
       } catch (error) {
         console.error("Error fetching orders:", error);
+        setIsLoading(false);
       }
     };
 
@@ -74,8 +102,11 @@ const UserDetail = () => {
     }
   }, [token, backendUrl]);
 
-  if (!user)
+  if (isLoading)
     return <p className="text-gray-30 text-center mt-10">Loading...</p>;
+
+  if (!user)
+    return <p className="text-gray-30 text-center mt-10">User not found.</p>;
 
   return (
     <div className="flex flex-col min-h-screen bg-primary">
@@ -202,45 +233,56 @@ const UserDetail = () => {
             ) : activeTab === "wishlist" ? (
               <div>
                 <h2 className="text-2xl font-semibold mb-6 text-secondary">Wish List</h2>
-                <div className="flex-1 overflow-y-auto max-h-[400px] mb-6 pr-2 custom-scrollbar">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {wishlist.map((productId) => {
-                      const product = products.find((p) => p._id === productId);
-                      if (!product) return null;
-                      
-                      return (
-                        <div key={product._id} className="bg-white p-4 rounded-lg shadow">
-                          <Link to={`/product/${product._id}`} className="block">
-                            <img
-                              src={product.image[0]}
-                              alt={product.name}
-                              className="w-full h-48 object-cover rounded-lg mb-2"
-                            />
-                            <h3 className="font-medium text-lg">{product.name}</h3>
-                            <p className="text-gray-600">{currency} {formatPrice(product.price)}</p>
-                          </Link>
-                          <div className="mt-2 flex justify-end">
-                            <button 
-                              onClick={() => removeFromWishlist(product._id)}
-                              className="text-red-500 hover:text-red-700 transition-colors p-2"
-                              title="Remove from wishlist"
-                            >
-                              <FaTrash />
-                            </button>
+                {isLoading ? (
+                  <p className="text-gray-30 text-center mt-10">Loading...</p>
+                ) : !isWishlistEmpty ? (
+                  <div className="flex-1 overflow-y-auto max-h-[400px] mb-6 pr-2 custom-scrollbar">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {wishlist.map((productId) => {
+                        console.log("Rendering product ID:", productId);
+                        const product = products.find((p) => p._id === productId);
+                        if (!product) {
+                          console.log("Product not found for ID:", productId);
+                          return null;
+                        }
+                        
+                        console.log("Found product:", product.name);
+                        return (
+                          <div key={product._id} className="bg-white p-4 rounded-lg shadow">
+                            <Link to={`/product/${product._id}`} className="block">
+                              <img
+                                src={product.image[0]}
+                                alt={product.name}
+                                className="w-full h-48 object-cover rounded-lg mb-2"
+                              />
+                              <h3 className="font-medium text-lg">{product.name}</h3>
+                              <p className="text-gray-600">{currency} {formatPrice(product.price)}</p>
+                            </Link>
+                            <div className="mt-2 flex justify-end">
+                              <button 
+                                onClick={() => {
+                                  console.log("Remove button clicked for:", product._id);
+                                  removeFromWishlist(product._id);
+                                }}
+                                className="text-red-500 hover:text-red-700 transition-colors p-2"
+                                title="Remove from wishlist"
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                    {wishlist.length === 0 && (
-                      <div className="col-span-full flex flex-col items-center justify-center py-16">
-                        <p className="text-gray-500 text-lg text-center">Your wishlist is empty.</p>
-                        <Link to="/collection" className="inline-block mt-4 px-6 py-2 bg-secondary text-white rounded-lg hover:bg-tertiary transition-colors">
-                          Continue Shopping
-                        </Link>
-                      </div>
-                    )}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-gray-30 text-lg">Your wishlist is empty.</p>
+                    <Link to="/collection" className="inline-block mt-4 px-6 py-2 bg-secondary text-white rounded-lg hover:bg-tertiary transition-colors">
+                      Continue Shopping
+                    </Link>
+                  </div>
+                )}
               </div>
             ) : activeTab === "cart" ? (
               <div>
@@ -315,39 +357,43 @@ const UserDetail = () => {
             ) : activeTab === "orders" ? (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h2 className="text-2xl font-semibold mb-6 text-secondary">Order History</h2>
-                <div className="flex-1 overflow-y-auto max-h-[400px] mb-6 pr-2 custom-scrollbar">
-                  {orderData.map((item, index, ) => (
-                    <div key={index} className="bg-primary p-4 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <h3 className="text-lg font-medium text-secondary">{item.name}</h3>
-                          <p className="text-sm text-gray-600">
-                            Color: {item.color} | Quantity: {item.quantity}
-                          </p>
+                {isLoading ? (
+                  <p className="text-gray-30 text-center mt-10">Loading...</p>
+                ) : (
+                  <div className="flex-1 overflow-y-auto max-h-[400px] mb-6 pr-2 custom-scrollbar">
+                    {orderData.map((item, index, ) => (
+                      <div key={index} className="bg-primary p-4 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <h3 className="text-lg font-medium text-secondary">{item.name}</h3>
+                            <p className="text-sm text-gray-600">
+                              Color: {item.color} | Quantity: {item.quantity}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-semibold text-secondary">{currency} {item.price.toLocaleString('id-ID').replace(',', '.')}</p>
+                            <p className="text-sm text-gray-600">{new Date(item.date).toLocaleDateString()}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-lg font-semibold text-secondary">{currency} {item.price.toLocaleString('id-ID').replace(',', '.')}</p>
-                          <p className="text-sm text-gray-600">{new Date(item.date).toLocaleDateString()}</p>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className={`px-3 py-1 rounded-full ${
+                            item.status.toLowerCase() === "pending" ? "bg-yellow-100 text-yellow-800" :
+                            item.status.toLowerCase() === "completed" ? "bg-green-100 text-green-800" :
+                            "bg-gray-100 text-gray-800"
+                          }`}>
+                            {item.status}
+                          </span>
+                          <span className="text-gray-600">
+                            Payment: {item.paymentMethod}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className={`px-3 py-1 rounded-full ${
-                          item.status.toLowerCase() === "pending" ? "bg-yellow-100 text-yellow-800" :
-                          item.status.toLowerCase() === "completed" ? "bg-green-100 text-green-800" :
-                          "bg-gray-100 text-gray-800"
-                        }`}>
-                          {item.status}
-                        </span>
-                        <span className="text-gray-600">
-                          Payment: {item.paymentMethod}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                  {orderData.length === 0 && (
-                    <p className="text-gray-500 text-center py-12">No orders found.</p>
-                  )}
-                </div>
+                    ))}
+                    {orderData.length === 0 && (
+                      <p className="text-gray-500 text-center py-12">No orders found.</p>
+                    )}
+                  </div>
+                )}
               </div>
             ) : null}
           </div>

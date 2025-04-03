@@ -138,11 +138,14 @@ const ShopContextProvider = ({ children }) => {
   // GETTING USER WISHLIST
   const getWishlist = useCallback(async () => {
     try {
+      console.log("Fetching wishlist with token:", token);
       const response = await axios.get(backendUrl + "/api/user/wishlist", {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log("Wishlist response:", response.data);
       if (response.data.success) {
         setWishlist(response.data.wishlist);
+        console.log("Wishlist set to:", response.data.wishlist);
       }
     } catch (error) {
       console.error("Error fetching wishlist:", error);
@@ -200,14 +203,28 @@ const ShopContextProvider = ({ children }) => {
   // REMOVE FROM WISHLIST
   const removeFromWishlist = async (productId) => {
     try {
+      console.log("Removing from wishlist:", productId);
+      console.log("Current wishlist before removal:", wishlist);
+      
       const response = await axios.post(
         backendUrl + "/api/user/wishlist/remove",
         { productId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
+      console.log("Wishlist removal response:", response.data);
+      
       if (response.data.success) {
+        // Update the wishlist state with the new wishlist from the server
         setWishlist(response.data.wishlist);
+        console.log("Updated wishlist after removal:", response.data.wishlist);
         toast.success("Removed from wishlist");
+        
+        // Force a re-fetch of the wishlist to ensure it's up to date
+        getWishlist();
+      } else {
+        console.error("Failed to remove from wishlist:", response.data);
+        toast.error("Failed to remove from wishlist");
       }
     } catch (error) {
       console.error("Error removing from wishlist:", error);

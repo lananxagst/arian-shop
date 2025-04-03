@@ -1,9 +1,15 @@
-import React from "react";
 import { Link, NavLink } from "react-router-dom";
 import { FaSquarePlus } from "react-icons/fa6";
 import { BiLogOut } from "react-icons/bi";
+import { toast } from "react-toastify";
+import PropTypes from 'prop-types';
 
 const Sidebar = ({ setToken }) => {
+  const handleLogout = () => {
+    setToken("");
+    toast.success("Logged out successfully!");
+  };
+
   return (
     <div className="max-sm:flexCenter max-sm:pb-3 rounded bg-white pb-3 sm:w-1/5 sm:min-h-screen">
       <div className="flex flex-col gap-y-6 max-sm:items-center sm:flex-col pt-4 sm:pt-14">
@@ -48,7 +54,7 @@ const Sidebar = ({ setToken }) => {
           </NavLink>
           <div className="max-sm:ml-5 sm:mt-72">
             <button
-              onClick={() => setToken("")}
+              onClick={handleLogout}
               className="flexStart gap-x-2 sm:pl-12 p-5 medium-15 cursor-pointer h-10 rounded-xl text-red-500"
             >
               <BiLogOut className="text-lg" />
@@ -59,6 +65,10 @@ const Sidebar = ({ setToken }) => {
       </div>
     </div>
   );
+};
+
+Sidebar.propTypes = {
+  setToken: PropTypes.func.isRequired
 };
 
 export default Sidebar;
