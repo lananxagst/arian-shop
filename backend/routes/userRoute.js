@@ -21,6 +21,13 @@ userRouter.post("/register", registerUser);
 userRouter.post("/login", loginUser);
 userRouter.post("/admin", adminLogin);
 userRouter.post("/login-google", googleLoginUser);
+
+// Wishlist endpoints
+userRouter.get("/wishlist", authMiddleware, getWishlist);
+userRouter.get("/wishlist/get", authMiddleware, getWishlist); // Alias for compatibility
+userRouter.post("/wishlist/toggle", authMiddleware, toggleWishlistItem);
+userRouter.post("/wishlist/remove", authMiddleware, removeFromWishlist);
+
 userRouter.get("/me", authMiddleware, async (req, res) => {
   try {
     const user = await userModel.findById(req.user.id).select("-password");

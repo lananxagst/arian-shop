@@ -142,8 +142,37 @@ const ShopContextProvider = ({ children }) => {
         return;
       }
       
+      // Try to get cached wishlist from localStorage first
+      const cachedWishlist = localStorage.getItem('userWishlist');
+      if (cachedWishlist) {
+        console.log("Using cached wishlist from localStorage");
+        try {
+          const parsedWishlist = JSON.parse(cachedWishlist);
+          setWishlist(parsedWishlist);
+        } catch (parseError) {
+          console.error("Error parsing cached wishlist:", parseError);
+        }
+      }
+      
+      // Try both endpoints for compatibility
       console.log("Getting wishlist with token:", token);
-      const response = await api.get("/api/user/wishlist/get");
+      let response;
+      try {
+        response = await api.get("/api/user/wishlist/get");
+      } catch (firstError) {
+        console.log("First wishlist endpoint failed, trying alternative:", firstError);
+        try {
+          response = await api.get("/api/user/wishlist");
+        } catch (secondError) {
+          console.error("All wishlist endpoints failed:", secondError);
+          // If we have cached data, don't show an error toast
+          if (!cachedWishlist) {
+            toast.error("Could not load wishlist. Using cached data if available.");
+          }
+          return;
+        }
+      }
+      
       console.log("Get wishlist response:", response.data);
       
       if (response.data.success) {
@@ -156,8 +185,12 @@ const ShopContextProvider = ({ children }) => {
         localStorage.setItem('wishlistLastUpdated', Date.now());
       }
     } catch (error) {
-      console.log(error);
-      toast.error(error.message);
+      console.log("Wishlist fetch error:", error);
+      // Don't show error toast if we already have cached data
+      const cachedWishlist = localStorage.getItem('userWishlist');
+      if (!cachedWishlist) {
+        toast.error("Could not load wishlist. Using cached data if available.");
+      }
     }
     // refreshTrigger is intentionally not included in the dependency array
     // It's used in the refreshUserData function to trigger this function
@@ -266,6 +299,18 @@ const ShopContextProvider = ({ children }) => {
         return;
       }
       
+      // Try to get cached cart from localStorage first
+      const cachedCart = localStorage.getItem('userCart');
+      if (cachedCart) {
+        console.log("Using cached cart from localStorage");
+        try {
+          const parsedCart = JSON.parse(cachedCart);
+          setCartItems(parsedCart);
+        } catch (parseError) {
+          console.error("Error parsing cached cart:", parseError);
+        }
+      }
+      
       console.log("Getting user cart with token:", token);
       const response = await api.post(
         "/api/cart/get",
@@ -282,8 +327,12 @@ const ShopContextProvider = ({ children }) => {
         localStorage.setItem('cartLastUpdated', Date.now());
       }
     } catch (error) {
-      console.log(error);
-      toast.error(error.message);
+      console.log("Cart fetch error:", error);
+      // Don't show error toast if we already have cached data
+      const cachedCart = localStorage.getItem('userCart');
+      if (!cachedCart) {
+        toast.error("Could not load cart. Using cached data if available.");
+      }
     }
     // refreshTrigger is intentionally not included in the dependency array
     // It's used in the refreshUserData function to trigger this function
@@ -420,8 +469,19 @@ const ShopContextProvider = ({ children }) => {
     if (token) {
       // Increment the refresh trigger to force re-fetching
       setRefreshTrigger(prev => prev + 1);
-      getUserCart();
-      getWishlist();
+      
+      // Add error handling for data fetching
+      try {
+        getUserCart();
+      } catch (error) {
+        console.error("Error refreshing cart:", error);
+      }
+      
+      try {
+        getWishlist();
+      } catch (error) {
+        console.error("Error refreshing wishlist:", error);
+      }
       
       // Set a flag in localStorage to indicate data is being refreshed
       localStorage.setItem('dataRefreshing', 'true');
