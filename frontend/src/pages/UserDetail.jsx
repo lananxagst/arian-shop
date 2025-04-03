@@ -26,6 +26,9 @@ const UserDetail = () => {
   const getProfileImage = () => {
     if (!user) return '';
     
+    console.log('Getting profile image for user:', user.name);
+    console.log('Avatar value:', user.avatar);
+    
     if (user.avatar) {
       // If it's a Cloudinary URL (starts with https://res.cloudinary.com), use it directly
       if (user.avatar.includes('cloudinary.com')) {
@@ -33,11 +36,17 @@ const UserDetail = () => {
         return user.avatar;
       }
       
+      // Log the type of avatar value
+      console.log('Avatar type:', typeof user.avatar);
+      
       // Otherwise use the image helper
-      return getImageUrl(user.avatar, user.name);
+      const imageUrl = getImageUrl(user.avatar, user.name);
+      console.log('Image URL after helper:', imageUrl);
+      return imageUrl;
     }
     
     // Fallback to UI Avatars
+    console.log('No avatar found, using fallback');
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
       user?.name || 'User'
     )}&background=6D28D9&color=ffffff&size=128`;
@@ -59,6 +68,8 @@ const UserDetail = () => {
         const res = await api.get('/api/user/me');
         
         if (res.data.success) {
+          console.log('User data from API:', res.data.user);
+          console.log('Avatar URL from API:', res.data.user.avatar);
           setUser(res.data.user);
         }
         setIsLoading(false);
