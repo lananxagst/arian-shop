@@ -13,7 +13,6 @@ import userModel from "../models/userModel.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import path from "path";
-import cloudinary from "../config/cloudinary.js";
 
 const userRouter = express.Router();
 
@@ -35,8 +34,15 @@ userRouter.get("/me", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 });
-// Use memory storage instead of disk storage for Vercel compatibility
-const storage = multer.memoryStorage();
+// Konfigurasi penyimpanan gambar
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // Simpan gambar di folder "uploads"
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${req.user.id}-${Date.now()}${path.extname(file.originalname)}`);
+  },
+});
 
 // Filter hanya menerima file gambar
 const fileFilter = (req, file, cb) => {
@@ -49,47 +55,19 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter });
 
-// Simple endpoint for updating user profile without avatar
+// Endpoint untuk update profil dengan avatar
 userRouter.put(
   "/update",
   authMiddleware,
-  express.json(),
+  upload.single("avatar"),
   async (req, res) => {
     try {
-      const { name, bio, phone, address, password, avatar } = req.body;
+      const { name, bio, phone, address, password } = req.body;
       const userId = req.user.id;
-      
-      console.log('Update profile request received:', { 
-        userId,
-        name,
-        hasPassword: !!password,
-        hasAvatar: !!avatar,
-        avatarValue: avatar
-      });
-      
-      // Initialize updateData with the form fields
-      const updateData = { name };
-      
-      // Only add fields if they are provided
-      if (bio !== undefined) updateData.bio = bio;
-      if (phone !== undefined) updateData.phone = phone;
-      if (address !== undefined) updateData.address = address;
-      
-      // Handle avatar specially to ensure Cloudinary URLs are saved correctly
-      if (avatar !== undefined) {
-        console.log('Avatar update requested with value:', avatar);
-        
-        // If it's a Cloudinary URL, use it directly
-        if (typeof avatar === 'string' && avatar.includes('cloudinary.com')) {
-          console.log('Saving Cloudinary URL to user profile:', avatar);
-          updateData.avatar = avatar;
-        } else if (avatar) {
-          // For other values, save as is
-          updateData.avatar = avatar;
-        }
-      }
-      
-      // Hash password if provided
+      const avatar = req.file ? `/uploads/${req.file.filename}` : undefined;
+
+      const updateData = { name, bio, phone, address };
+      if (avatar) updateData.avatar = avatar;
       if (password) {
         const salt = await bcrypt.genSalt(10);
         updateData.password = await bcrypt.hash(password, salt);

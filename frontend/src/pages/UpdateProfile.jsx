@@ -1,15 +1,10 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import api from '../utils/api';
-import { uploadToCloudinary } from '../utils/cloudinaryUpload';
-import { ShopContext } from "../context/ShopContext";
 
 const EditProfile = () => {
   const navigate = useNavigate();
-  const { userData, updateUserData, getUserProfile } = useContext(ShopContext);
-  
-  // Local state for form values
   const [user, setUser] = useState({
     name: "",
     email: "",
@@ -20,33 +15,30 @@ const EditProfile = () => {
     avatar: "",
   });
 
-  // Initialize form with userData from context
   useEffect(() => {
-    if (userData) {
-      console.log("Setting form data from context userData:", userData);
-      setUser({ 
-        ...userData, 
-        password: "" // Empty password for security
-      });
-    } else {
-      // If userData is not available in context, fetch it
-      getUserProfile();
-    }
-  }, [userData, getUserProfile]);
+    const fetchUserData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("http://localhost:4000/api/user/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        console.log("User API response:", res.data);
+        if (res.data.success) {
+          console.log("User data:", res.data.user);
+          setUser({ ...res.data.user, password: "" }); // Kosongkan password untuk keamanan
+        }
+      } catch (error) {
+        console.error("Error fetching user data", error);
+        toast.error("Failed to load user data");
+      }
+    };
+    fetchUserData();
+  }, []);
 
   const handleChange = (e) => {
     if (e.target.name === "avatar") {
-      // Preview the selected image
-      const file = e.target.files[0];
-      if (file) {
-        // Create a URL for the file for preview purposes
-        const imageUrl = URL.createObjectURL(file);
-        setUser({ 
-          ...user, 
-          avatarFile: file,  // Store the actual file separately
-          avatar: imageUrl   // Use the URL for preview
-        });
-      }
+      setUser({ ...user, avatar: e.target.files[0] });
     } else {
       setUser({ ...user, [e.target.name]: e.target.value });
     }
@@ -55,108 +47,47 @@ const EditProfile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Show loading toast
-      const loadingToast = toast.loading("Updating profile...");
-      
-      // Create a regular JSON object instead of FormData
-      const userData = {
-        name: user.name,
-        bio: user.bio || "",
-        phone: user.phone || "",
-        address: user.address || ""
-      };
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append("name", user.name);
+      formData.append("bio", user.bio);
+      formData.append("phone", user.phone);
+      formData.append("address", user.address);
       
       // Only include password if it's not empty
       if (user.password && user.password.trim() !== "") {
-        userData.password = user.password;
+        formData.append("password", user.password);
         console.log("Including password in update");
       }
       
-      // If we have an avatar URL from a previous upload, include it
-      if (user.avatar && !user.avatar.startsWith('blob:')) {
-        userData.avatar = user.avatar;
+      if (user.avatar instanceof File) {
+        formData.append("avatar", user.avatar);
       }
-      
-      console.log("Sending user data for update:", {
-        ...userData,
-        password: userData.password ? '******' : undefined
-      });
-      
-      // If we have a new avatar file, we'll handle that in a separate step
-      const hasNewAvatarFile = !!user.avatarFile;
 
-      // Send the update request with JSON data
-      const res = await api.put('/api/user/update', userData);
-
-      // Dismiss loading toast
-      toast.dismiss(loadingToast);
-      
-      if (res.data.success) {
-        // If we have a new avatar file, upload it to Cloudinary directly
-        if (hasNewAvatarFile) {
-          try {
-            // Create a loading toast for the avatar upload
-            const avatarToast = toast.loading("Uploading profile picture...");
-            
-            // Upload directly to Cloudinary
-            console.log('Uploading file to Cloudinary:', user.avatarFile.name);
-            const cloudinaryUrl = await uploadToCloudinary(user.avatarFile);
-            console.log('Received Cloudinary URL:', cloudinaryUrl);
-            
-            // Update the user profile with the new avatar URL
-            console.log('Updating profile with new avatar URL:', cloudinaryUrl);
-            const avatarUpdateRes = await api.put('/api/user/update', {
-              avatar: cloudinaryUrl
-            });
-            console.log('Avatar update response:', avatarUpdateRes.data);
-            
-            // Dismiss the loading toast
-            toast.dismiss(avatarToast);
-            
-            if (avatarUpdateRes.data.success) {
-              toast.success("Profile picture updated");
-              // Update the user state with the new avatar URL
-              setUser(prev => ({ ...prev, avatar: cloudinaryUrl }));
-              
-              // Update the global user data context
-              updateUserData({ avatar: cloudinaryUrl });
-              
-              // Store the Cloudinary URL and timestamp in localStorage
-              // This allows immediate use of the new avatar before the backend update is reflected
-              localStorage.setItem('cloudinary_avatar_url', cloudinaryUrl);
-              localStorage.setItem('avatar_updated', new Date().getTime());
-            } else {
-              toast.error("Failed to update profile picture");
-            }
-          } catch (avatarError) {
-            console.error("Error uploading avatar:", avatarError);
-            toast.error("Profile updated but couldn't upload new picture: " + avatarError.message);
-          }
-        } else {
-          toast.success("Profile updated successfully");
+      const res = await axios.put(
+        "http://localhost:4000/api/user/update",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
         }
-        
-        // Update the user state with the response data
-        setUser(prev => ({ ...prev, ...userData }));
-        
-        // Update the global user data context
-        updateUserData(userData);
+      );
+
+      if (res.data.success) {
+        toast.success("Profile updated successfully");
+        // Clear password field after successful update
+        setUser({ ...user, password: "" });
         
         // Redirect to UserDetail page after successful update
         setTimeout(() => {
-          // Force reload to ensure the latest avatar is displayed
-          navigate("/user-detail", { state: { forceRefresh: true, timestamp: new Date().getTime() } });
-        }, 2000); // Slightly longer delay to allow all toasts to be seen
+          navigate("/user-detail");
+        }, 1000); // Short delay to allow the toast to be seen
       }
     } catch (error) {
-      console.error("Error updating profile:", error);
-      
-      // Get detailed error information
-      const errorMessage = error.response?.data?.message || error.message;
-      const errorDetails = error.response?.data?.error || 'Unknown error';
-      console.error("Error details:", { message: errorMessage, details: errorDetails });
-      
-      toast.error(`Failed to update profile: ${errorMessage}`);
+      console.error("Error updating profile", error);
+      toast.error("Failed to update profile: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -216,7 +147,11 @@ const EditProfile = () => {
           {user.avatar && (
             <img
               src={
-                user.avatar ? user.avatar : "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.name || 'User')
+                typeof user.avatar === "string"
+                  ? user.avatar.startsWith("http")
+                    ? user.avatar
+                    : `http://localhost:4000${user.avatar}`
+                  : URL.createObjectURL(user.avatar) // Preview gambar yang di-upload
               }
               alt="Profile Avatar"
               className="w-32 h-32 rounded-full border-4 border-gray-300 object-cover mx-auto"

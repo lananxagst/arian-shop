@@ -1,7 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import api from "../utils/api";
-import { getImageUrl } from "../utils/imageHelper";
+import axios from "axios";
 import Navbar from "./Navbar";
 import { FaBars, FaBarsStaggered } from "react-icons/fa6";
 import { TbUserCircle } from "react-icons/tb";
@@ -9,8 +8,6 @@ import { RiUserLine } from "react-icons/ri";
 import { ShopContext } from "../context/ShopContext";
 import { FaCartShopping } from "react-icons/fa6";
 import { toast } from "react-toastify";
-
-// No longer needed as we're using the imageHelper utility
 
 const Header = () => {
   const [menuOpened, setMenuOpened] = useState(false);
@@ -31,7 +28,9 @@ const Header = () => {
     const fetchUser = async () => {
       if (token) {
         try {
-          const res = await api.get('/api/user/me');
+          const res = await axios.get("http://localhost:4000/api/user/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
 
           if (res.data.success) {
             setUser(res.data.user);
@@ -99,7 +98,11 @@ const Header = () => {
                 >
                   {user?.avatar ? (
                     <img
-                      src={getImageUrl(user.avatar)}
+                      src={
+                        user.avatar.startsWith("http")
+                          ? user.avatar
+                          : `http://localhost:4000${user.avatar}`
+                      }
                       alt="User Avatar"
                       className="w-10 h-10 rounded-full border-2 border-gray-300 object-cover"
                       referrerPolicy="no-referrer"
