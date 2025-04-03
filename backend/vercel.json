@@ -6,7 +6,12 @@
             "use": "@vercel/node",
             "config": {
                 "includeFiles": [
-                    "dist/**"
+                    "dist/**",
+                    "config/**",
+                    "routes/**",
+                    "models/**",
+                    "controllers/**",
+                    "middleware/**"
                 ]
             }
         }
@@ -16,5 +21,8 @@
             "src": "/(.*)",
             "dest": "server.js"
         }
-    ]
+    ],
+    "env": {
+        "NODE_ENV": "production"
+    }
 }
