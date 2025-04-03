@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from '../utils/api';
+import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -94,21 +95,30 @@ const EditProfile = () => {
         // If we have a new avatar file, upload it to Cloudinary directly
         if (hasNewAvatarFile) {
           try {
-            // Create a new FormData for the avatar upload
+            // Create a loading toast for the avatar upload
             const avatarToast = toast.loading("Uploading profile picture...");
             
-            // Use Cloudinary's upload widget or direct upload API
-            // For simplicity, we'll use a placeholder URL for now
-            // In a real implementation, you would upload to Cloudinary and get back a URL
+            // Upload directly to Cloudinary
+            const cloudinaryUrl = await uploadToCloudinary(user.avatarFile);
             
-            // Simulate a successful upload with a delay
-            setTimeout(() => {
-              toast.dismiss(avatarToast);
+            // Update the user profile with the new avatar URL
+            const avatarUpdateRes = await api.put('/api/user/update', {
+              avatar: cloudinaryUrl
+            });
+            
+            // Dismiss the loading toast
+            toast.dismiss(avatarToast);
+            
+            if (avatarUpdateRes.data.success) {
               toast.success("Profile picture updated");
-            }, 1500);
+              // Update the user state with the new avatar URL
+              setUser(prev => ({ ...prev, avatar: cloudinaryUrl }));
+            } else {
+              toast.error("Failed to update profile picture");
+            }
           } catch (avatarError) {
             console.error("Error uploading avatar:", avatarError);
-            toast.error("Profile updated but couldn't upload new picture");
+            toast.error("Profile updated but couldn't upload new picture: " + avatarError.message);
           }
         } else {
           toast.success("Profile updated successfully");
