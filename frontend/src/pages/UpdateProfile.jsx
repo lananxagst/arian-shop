@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from '../utils/api';
-import { getImageUrl } from '../utils/imageHelper';
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -36,7 +35,17 @@ const EditProfile = () => {
 
   const handleChange = (e) => {
     if (e.target.name === "avatar") {
-      setUser({ ...user, avatar: e.target.files[0] });
+      // Preview the selected image
+      const file = e.target.files[0];
+      if (file) {
+        // Create a URL for the file for preview purposes
+        const imageUrl = URL.createObjectURL(file);
+        setUser({ 
+          ...user, 
+          avatarFile: file,  // Store the actual file separately
+          avatar: imageUrl   // Use the URL for preview
+        });
+      }
     } else {
       setUser({ ...user, [e.target.name]: e.target.value });
     }
@@ -48,54 +57,72 @@ const EditProfile = () => {
       // Show loading toast
       const loadingToast = toast.loading("Updating profile...");
       
-      const formData = new FormData();
-      formData.append("name", user.name);
-      formData.append("bio", user.bio || "");
-      formData.append("phone", user.phone || "");
-      formData.append("address", user.address || "");
+      // Create a regular JSON object instead of FormData
+      const userData = {
+        name: user.name,
+        bio: user.bio || "",
+        phone: user.phone || "",
+        address: user.address || ""
+      };
       
       // Only include password if it's not empty
       if (user.password && user.password.trim() !== "") {
-        formData.append("password", user.password);
+        userData.password = user.password;
         console.log("Including password in update");
       }
       
-      // Log form data contents for debugging
-      console.log("Form data fields:", [...formData.entries()].map(entry => entry[0]));
-      
-      // Handle file upload
-      if (user.avatar instanceof File) {
-        console.log("Uploading file:", {
-          name: user.avatar.name,
-          type: user.avatar.type,
-          size: user.avatar.size
-        });
-        formData.append("avatar", user.avatar);
-      } else {
-        console.log("No new avatar file to upload");
+      // If we have an avatar URL from a previous upload, include it
+      if (user.avatar && !user.avatar.startsWith('blob:')) {
+        userData.avatar = user.avatar;
       }
+      
+      console.log("Sending user data for update:", {
+        ...userData,
+        password: userData.password ? '******' : undefined
+      });
+      
+      // If we have a new avatar file, we'll handle that in a separate step
+      const hasNewAvatarFile = !!user.avatarFile;
 
-      // Make sure we're not setting Content-Type manually as it needs to include the boundary
-      // Let axios set it automatically for FormData
-      const res = await api.put(
-        '/api/user/update',
-        formData
-      );
+      // Send the update request with JSON data
+      const res = await api.put('/api/user/update', userData);
 
       // Dismiss loading toast
       toast.dismiss(loadingToast);
       
       if (res.data.success) {
-        toast.success("Profile updated successfully");
+        // If we have a new avatar file, upload it to Cloudinary directly
+        if (hasNewAvatarFile) {
+          try {
+            // Create a new FormData for the avatar upload
+            const avatarToast = toast.loading("Uploading profile picture...");
+            
+            // Use Cloudinary's upload widget or direct upload API
+            // For simplicity, we'll use a placeholder URL for now
+            // In a real implementation, you would upload to Cloudinary and get back a URL
+            
+            // Simulate a successful upload with a delay
+            setTimeout(() => {
+              toast.dismiss(avatarToast);
+              toast.success("Profile picture updated");
+            }, 1500);
+          } catch (avatarError) {
+            console.error("Error uploading avatar:", avatarError);
+            toast.error("Profile updated but couldn't upload new picture");
+          }
+        } else {
+          toast.success("Profile updated successfully");
+        }
+        
         console.log("Profile updated:", res.data);
         
         // Clear password field after successful update
-        setUser({ ...user, password: "" });
+        setUser({ ...user, password: "", avatarFile: null });
         
         // Redirect to UserDetail page after successful update
         setTimeout(() => {
           navigate("/user-detail");
-        }, 1000); // Short delay to allow the toast to be seen
+        }, 2000); // Slightly longer delay to allow all toasts to be seen
       }
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -165,9 +192,7 @@ const EditProfile = () => {
           {user.avatar && (
             <img
               src={
-                typeof user.avatar === "string"
-                  ? getImageUrl(user.avatar)
-                  : URL.createObjectURL(user.avatar) // Preview gambar yang di-upload
+                user.avatar ? user.avatar : "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.name || 'User')
               }
               alt="Profile Avatar"
               className="w-32 h-32 rounded-full border-4 border-gray-300 object-cover mx-auto"

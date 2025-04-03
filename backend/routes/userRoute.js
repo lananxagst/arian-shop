@@ -49,67 +49,31 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter });
 
-// Endpoint untuk update profil dengan avatar
+// Simple endpoint for updating user profile without avatar
 userRouter.put(
   "/update",
   authMiddleware,
-  upload.single("avatar"),
+  express.json(),
   async (req, res) => {
     try {
-      const { name, bio, phone, address, password } = req.body;
+      const { name, bio, phone, address, password, avatar } = req.body;
       const userId = req.user.id;
       
-      // Initialize updateData with the form fields
-      const updateData = { name, bio, phone, address };
+      console.log('Update profile request received:', { 
+        userId,
+        name,
+        hasPassword: !!password,
+        hasAvatar: !!avatar
+      });
       
-      // Handle avatar upload to Cloudinary if a file was uploaded
-      if (req.file) {
-        try {
-          console.log('File received:', { 
-            fieldname: req.file.fieldname,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
-            hasBuffer: !!req.file.buffer
-          });
-          
-          // Safely handle the buffer
-          if (!req.file.buffer) {
-            console.error('No buffer found in uploaded file');
-            return res.status(400).json({
-              success: false,
-              message: 'Invalid file upload - no buffer found'
-            });
-          }
-          
-          // Convert buffer to base64 string for Cloudinary upload
-          const fileBuffer = req.file.buffer;
-          const fileStr = `data:${req.file.mimetype};base64,${fileBuffer.toString('base64')}`;
-          
-          // Upload to Cloudinary with additional options for better reliability
-          const result = await cloudinary.uploader.upload(fileStr, {
-            resource_type: "auto",
-            folder: "user-avatars",
-            overwrite: true,
-            unique_filename: true,
-            timeout: 60000, // 60 seconds timeout
-          });
-          
-          console.log("Cloudinary upload successful:", {
-            public_id: result.public_id,
-            url: result.secure_url,
-            format: result.format
-          });
-          
-          updateData.avatar = result.secure_url;
-        } catch (cloudinaryError) {
-          console.error("Cloudinary upload error:", cloudinaryError);
-          return res.status(500).json({ 
-            success: false, 
-            message: "Error uploading avatar image",
-            error: cloudinaryError.message || 'Unknown Cloudinary error'
-          });
-        }
-      }
+      // Initialize updateData with the form fields
+      const updateData = { name };
+      
+      // Only add fields if they are provided
+      if (bio !== undefined) updateData.bio = bio;
+      if (phone !== undefined) updateData.phone = phone;
+      if (address !== undefined) updateData.address = address;
+      if (avatar !== undefined) updateData.avatar = avatar;
       
       // Hash password if provided
       if (password) {
