@@ -40,35 +40,74 @@ const allowedOrigins = [
   "https://arian-shop-git-main.vercel.app",
   "https://arian-shop-*.vercel.app"
 ];
-app.use(
-  cors({
-    origin: function(origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      
-      // Check if the origin is in our allowedOrigins list
-      if (allowedOrigins.some(allowedOrigin => {
-        // Support wildcard matching for Vercel preview deployments
-        if (allowedOrigin.includes('*')) {
-          const pattern = new RegExp(allowedOrigin.replace('*', '.*'));
-          return pattern.test(origin);
-        }
-        return allowedOrigin === origin;
-      })) {
-        callback(null, true);
-      } else {
-        console.log("Blocked origin:", origin);
-        // For production, we'll still allow all origins for now
-        // but you can change this to be more restrictive later
-        callback(null, true);
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization", "token"],
-    credentials: true,
-    exposedHeaders: ["token"]
-  })
-);
+
+// Create a custom CORS middleware function
+const corsMiddleware = (req, res, next) => {
+  // Get the origin from the request headers
+  const origin = req.headers.origin;
+  
+  // Set default CORS headers for all responses
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, token, x-requested-with, x-http-method-override');
+    res.header('Access-Control-Max-Age', '86400'); // 24 hours
+    res.header('Access-Control-Expose-Headers', 'token');
+    
+    // In development, allow all origins
+    if (process.env.NODE_ENV !== 'production') {
+      res.header('Access-Control-Allow-Origin', origin || '*');
+      return res.status(204).end();
+    }
+    
+    // In production, check against allowed origins
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+    } else {
+      // For now, allow all origins in production too
+      res.header('Access-Control-Allow-Origin', origin || '*');
+    }
+    
+    return res.status(204).end();
+  }
+  
+  // For non-OPTIONS requests
+  if (origin) {
+    // In development, allow all origins
+    if (process.env.NODE_ENV !== 'production') {
+      res.header('Access-Control-Allow-Origin', origin);
+    } else if (allowedOrigins.includes(origin)) {
+      // In production, check against allowed origins
+      res.header('Access-Control-Allow-Origin', origin);
+    } else {
+      // For now, allow all origins in production too
+      res.header('Access-Control-Allow-Origin', origin);
+      console.log("Allowed non-listed origin:", origin);
+    }
+  }
+  
+  next();
+};
+
+// Apply our custom CORS middleware to all routes
+app.use(corsMiddleware);
+
+// Also use the cors package as a backup
+app.use(cors({
+  origin: true, // Reflect the request origin
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "token", "x-requested-with", "x-http-method-override"],
+  exposedHeaders: ["token"],
+  maxAge: 86400
+}));
+
+// Enable pre-flight for all routes
+app.options('*', (req, res) => {
+  res.status(204).end();
+});
 
 app.use(express.json());
 
