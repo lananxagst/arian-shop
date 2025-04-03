@@ -117,6 +117,9 @@ const EditProfile = () => {
               toast.success("Profile picture updated");
               // Update the user state with the new avatar URL
               setUser(prev => ({ ...prev, avatar: cloudinaryUrl }));
+              
+              // Force a cache refresh by adding a timestamp to localStorage
+              localStorage.setItem('avatar_updated', new Date().getTime());
             } else {
               toast.error("Failed to update profile picture");
             }
@@ -135,7 +138,8 @@ const EditProfile = () => {
         
         // Redirect to UserDetail page after successful update
         setTimeout(() => {
-          navigate("/user-detail");
+          // Force reload to ensure the latest avatar is displayed
+          navigate("/user-detail", { state: { forceRefresh: true, timestamp: new Date().getTime() } });
         }, 2000); // Slightly longer delay to allow all toasts to be seen
       }
     } catch (error) {

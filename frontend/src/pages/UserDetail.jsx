@@ -2,7 +2,7 @@ import { useEffect, useState, useContext } from "react";
 import api from "../utils/api";
 import { getImageUrl } from "../utils/imageHelper";
 import Footer from "../components/Footer";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ShopContext } from "../context/ShopContext";
 import { FaTrash } from "react-icons/fa";
 
@@ -14,6 +14,10 @@ const UserDetail = () => {
   const [isWishlistEmpty, setIsWishlistEmpty] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Check if we're coming from a profile update with force refresh
+  const forceRefresh = location.state?.forceRefresh;
 
   // Check if wishlist is empty whenever it changes
   useEffect(() => {
@@ -29,11 +33,16 @@ const UserDetail = () => {
     console.log('Getting profile image for user:', user.name);
     console.log('Avatar value:', user.avatar);
     
+    // Force refresh the component when avatar changes
+    // Add a timestamp to the URL to prevent caching
+    const timestamp = new Date().getTime();
+    
     if (user.avatar) {
-      // If it's a Cloudinary URL (starts with https://res.cloudinary.com), use it directly
+      // If it's a Cloudinary URL, use it directly with a cache-busting parameter
       if (user.avatar.includes('cloudinary.com')) {
-        console.log('Using Cloudinary image URL:', user.avatar);
-        return user.avatar;
+        const cloudinaryUrl = `${user.avatar}?t=${timestamp}`;
+        console.log('Using Cloudinary image URL:', cloudinaryUrl);
+        return cloudinaryUrl;
       }
       
       // Log the type of avatar value
@@ -70,7 +79,13 @@ const UserDetail = () => {
         if (res.data.success) {
           console.log('User data from API:', res.data.user);
           console.log('Avatar URL from API:', res.data.user.avatar);
-          setUser(res.data.user);
+          
+          // Make sure we're using the latest avatar URL
+          // This is especially important after a profile update
+          const userData = res.data.user;
+          
+          // Force a refresh of the component by setting a new object
+          setUser({...userData});
         }
         setIsLoading(false);
       } catch (error) {
@@ -116,7 +131,7 @@ const UserDetail = () => {
       fetchUserData();
       loadOrderData();
     }
-  }, [token, backendUrl]);
+  }, [token, backendUrl, forceRefresh]);
 
   if (isLoading)
     return <p className="text-gray-30 text-center mt-10">Loading...</p>;
