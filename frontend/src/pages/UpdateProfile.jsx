@@ -2,9 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from '../utils/api';
-
-// Get backend URL from environment variables
-const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://arianshop-backend.vercel.app';
+import { getImageUrl } from '../utils/imageHelper';
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -146,9 +144,7 @@ const EditProfile = () => {
             <img
               src={
                 typeof user.avatar === "string"
-                  ? user.avatar.startsWith("http")
-                    ? user.avatar
-                    : `${backendUrl}${user.avatar}`
+                  ? getImageUrl(user.avatar)
                   : URL.createObjectURL(user.avatar) // Preview gambar yang di-upload
               }
               alt="Profile Avatar"

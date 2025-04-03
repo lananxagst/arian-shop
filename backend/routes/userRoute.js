@@ -13,6 +13,7 @@ import userModel from "../models/userModel.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import path from "path";
+import cloudinary from "../config/cloudinary.js";
 
 const userRouter = express.Router();
 
@@ -64,10 +65,28 @@ userRouter.put(
     try {
       const { name, bio, phone, address, password } = req.body;
       const userId = req.user.id;
-      const avatar = req.file ? `/uploads/${req.file.filename}` : undefined;
-
+      
+      // Initialize updateData with the form fields
       const updateData = { name, bio, phone, address };
-      if (avatar) updateData.avatar = avatar;
+      
+      // Handle avatar upload to Cloudinary if a file was uploaded
+      if (req.file) {
+        try {
+          const result = await cloudinary.uploader.upload(req.file.path, {
+            resource_type: "image",
+            folder: "user-avatars",
+          });
+          updateData.avatar = result.secure_url;
+        } catch (cloudinaryError) {
+          console.error("Cloudinary upload error:", cloudinaryError);
+          return res.status(500).json({ 
+            success: false, 
+            message: "Error uploading avatar image" 
+          });
+        }
+      }
+      
+      // Hash password if provided
       if (password) {
         const salt = await bcrypt.genSalt(10);
         updateData.password = await bcrypt.hash(password, salt);

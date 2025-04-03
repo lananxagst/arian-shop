@@ -1,5 +1,6 @@
 import { useEffect, useState, useContext } from "react";
 import api from "../utils/api";
+import { getImageUrl } from "../utils/imageHelper";
 import Footer from "../components/Footer";
 import { Link, useNavigate } from "react-router-dom";
 import { ShopContext } from "../context/ShopContext";
@@ -26,9 +27,9 @@ const UserDetail = () => {
     if (!user) return '';
     
     if (user.avatar) {
-      return user.avatar.startsWith("http")
-        ? user.avatar
-        : `${backendUrl}${user.avatar}`;
+      return getImageUrl(user.avatar, `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        user?.name || 'User'
+      )}&background=6D28D9&color=ffffff&size=128`);
     }
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
       user?.name || 'User'

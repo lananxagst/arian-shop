@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../utils/api";
+import { getImageUrl } from "../utils/imageHelper";
 import Navbar from "./Navbar";
 import { FaBars, FaBarsStaggered } from "react-icons/fa6";
 import { TbUserCircle } from "react-icons/tb";
@@ -9,8 +10,7 @@ import { ShopContext } from "../context/ShopContext";
 import { FaCartShopping } from "react-icons/fa6";
 import { toast } from "react-toastify";
 
-// Get backend URL from environment variables
-const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://arianshop-backend.vercel.app';
+// No longer needed as we're using the imageHelper utility
 
 const Header = () => {
   const [menuOpened, setMenuOpened] = useState(false);
@@ -99,11 +99,7 @@ const Header = () => {
                 >
                   {user?.avatar ? (
                     <img
-                      src={
-                        user.avatar.startsWith("http")
-                          ? user.avatar
-                          : `${backendUrl}${user.avatar}`
-                      }
+                      src={getImageUrl(user.avatar)}
                       alt="User Avatar"
                       className="w-10 h-10 rounded-full border-2 border-gray-300 object-cover"
                       referrerPolicy="no-referrer"
