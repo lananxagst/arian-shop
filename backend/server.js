@@ -16,18 +16,33 @@ connectDB();
 connectCloudinary();
 
 // Middleware
-const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+const allowedOrigins = [
+  "http://localhost:5173", 
+  "http://localhost:5174",
+  "https://arian-shop.vercel.app",
+  "https://arian-shop-git-main.vercel.app",
+  "https://arian-shop-*.vercel.app"
+];
 app.use(
   cors({
     origin: function(origin, callback) {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
       
-      if (allowedOrigins.indexOf(origin) !== -1) {
+      // Check if the origin is in our allowedOrigins list
+      if (allowedOrigins.some(allowedOrigin => {
+        // Support wildcard matching for Vercel preview deployments
+        if (allowedOrigin.includes('*')) {
+          const pattern = new RegExp(allowedOrigin.replace('*', '.*'));
+          return pattern.test(origin);
+        }
+        return allowedOrigin === origin;
+      })) {
         callback(null, true);
       } else {
         console.log("Blocked origin:", origin);
-        // For debugging, allow all origins
+        // For production, we'll still allow all origins for now
+        // but you can change this to be more restrictive later
         callback(null, true);
       }
     },
