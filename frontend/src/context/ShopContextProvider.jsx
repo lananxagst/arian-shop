@@ -11,9 +11,10 @@ const ShopContextProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState({});
   const [wishlist, setWishlist] = useState([]);
   const [token, setToken] = useState("");
+  // State to track if cart is currently being synced
   const [isCartSyncing, setIsCartSyncing] = useState(false);
-  // Add a refreshTrigger state to force re-fetching data
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  // Add user profile data state
+  const [userData, setUserData] = useState(null);
   const navigate = useNavigate();
   const currency = "IDR";
   const delivery_charges = 10;
@@ -137,64 +138,17 @@ const ShopContextProvider = ({ children }) => {
   // GETTING USER WISHLIST
   const getWishlist = useCallback(async () => {
     try {
-      if (!token) {
-        console.log("No token, skipping getWishlist");
-        return;
-      }
-      
-      // Try to get cached wishlist from localStorage first
-      const cachedWishlist = localStorage.getItem('userWishlist');
-      if (cachedWishlist) {
-        console.log("Using cached wishlist from localStorage");
-        try {
-          const parsedWishlist = JSON.parse(cachedWishlist);
-          setWishlist(parsedWishlist);
-        } catch (parseError) {
-          console.error("Error parsing cached wishlist:", parseError);
-        }
-      }
-      
-      // Try both endpoints for compatibility
-      console.log("Getting wishlist with token:", token);
-      let response;
-      try {
-        response = await api.get("/api/user/wishlist/get");
-      } catch (firstError) {
-        console.log("First wishlist endpoint failed, trying alternative:", firstError);
-        try {
-          response = await api.get("/api/user/wishlist");
-        } catch (secondError) {
-          console.error("All wishlist endpoints failed:", secondError);
-          // If we have cached data, don't show an error toast
-          if (!cachedWishlist) {
-            toast.error("Could not load wishlist. Using cached data if available.");
-          }
-          return;
-        }
-      }
-      
-      console.log("Get wishlist response:", response.data);
-      
+      console.log("Fetching wishlist with token:", token);
+      const response = await api.get("/api/user/wishlist");
+      console.log("Wishlist response:", response.data);
       if (response.data.success) {
-        // Create a new array to ensure React detects the change
-        const newWishlist = [...response.data.wishlist];
-        setWishlist(newWishlist);
-        
-        // Store in localStorage for quick access
-        localStorage.setItem('userWishlist', JSON.stringify(newWishlist));
-        localStorage.setItem('wishlistLastUpdated', Date.now());
+        setWishlist(response.data.wishlist);
       }
     } catch (error) {
-      console.log("Wishlist fetch error:", error);
-      // Don't show error toast if we already have cached data
-      const cachedWishlist = localStorage.getItem('userWishlist');
-      if (!cachedWishlist) {
-        toast.error("Could not load wishlist. Using cached data if available.");
-      }
+      console.log(error);
+      toast.error(error.message);
     }
-    // refreshTrigger is intentionally not included in the dependency array
-    // It's used in the refreshUserData function to trigger this function
-  }, [token]); // Remove refreshTrigger from dependencies
+  }, [token]);
 
   // ADDING ITEMS TO WISHLIST
   const toggleWishlist = async (productId) => {
@@ -299,18 +253,6 @@ const ShopContextProvider = ({ children }) => {
         return;
       }
       
-      // Try to get cached cart from localStorage first
-      const cachedCart = localStorage.getItem('userCart');
-      if (cachedCart) {
-        console.log("Using cached cart from localStorage");
-        try {
-          const parsedCart = JSON.parse(cachedCart);
-          setCartItems(parsedCart);
-        } catch (parseError) {
-          console.error("Error parsing cached cart:", parseError);
-        }
-      }
-      
       console.log("Getting user cart with token:", token);
       const response = await api.post(
         "/api/cart/get",
@@ -318,25 +260,13 @@ const ShopContextProvider = ({ children }) => {
       );
       console.log("Get cart response:", response.data);
       if (response.data.success) {
-        // Create a new object to ensure React detects the change
-        const newCartData = JSON.parse(JSON.stringify(response.data.cartData));
-        setCartItems(newCartData);
-        
-        // Store in localStorage for quick access
-        localStorage.setItem('userCart', JSON.stringify(newCartData));
-        localStorage.setItem('cartLastUpdated', Date.now());
+        setCartItems(response.data.cartData);
       }
     } catch (error) {
-      console.log("Cart fetch error:", error);
-      // Don't show error toast if we already have cached data
-      const cachedCart = localStorage.getItem('userCart');
-      if (!cachedCart) {
-        toast.error("Could not load cart. Using cached data if available.");
-      }
+      console.log(error);
+      toast.error(error.message);
     }
-    // refreshTrigger is intentionally not included in the dependency array
-    // It's used in the refreshUserData function to trigger this function
-  }, [token]); // Remove refreshTrigger from dependencies
+  }, [token]);
 
   // SYNC GUEST CART TO SERVER AFTER LOGIN
   const syncGuestCartToServer = useCallback(async () => {
@@ -427,8 +357,10 @@ const ShopContextProvider = ({ children }) => {
     
     // Check for token in localStorage
     const storedToken = localStorage.getItem("token");
-    if (storedToken) {
+    if (storedToken && !token) {
+      console.log("Setting token from localStorage:", storedToken);
       setToken(storedToken);
+      return; // Exit early, the next effect run will handle cart loading
     }
     
     // Load guest cart from localStorage if not logged in
@@ -447,6 +379,34 @@ const ShopContextProvider = ({ children }) => {
     }
   }, [getProductData, token]);
   
+  // Get user profile data
+  const getUserProfile = useCallback(async () => {
+    try {
+      if (!token) {
+        console.log("No token, skipping getUserProfile");
+        return;
+      }
+      
+      console.log("Getting user profile with token:", token);
+      const response = await api.get("/api/user/me");
+      
+      if (response.data.success) {
+        console.log("User profile data:", response.data.user);
+        setUserData(response.data.user);
+        
+        // Store Cloudinary URL in localStorage for immediate access
+        if (response.data.user.avatar && response.data.user.avatar.includes('cloudinary.com')) {
+          localStorage.setItem('cloudinary_avatar_url', response.data.user.avatar);
+          localStorage.setItem('avatar_updated', new Date().getTime());
+        }
+      } else {
+        console.error("Failed to get user profile:", response.data);
+      }
+    } catch (error) {
+      console.error("Error getting user profile:", error);
+    }
+  }, [token]);
+
   // Handle user-specific data when token changes
   useEffect(() => {
     if (token) {
@@ -454,6 +414,7 @@ const ShopContextProvider = ({ children }) => {
       // Only fetch user-specific data when logged in
       getUserCart();
       getWishlist();
+      getUserProfile();
       
       // Sync guest cart with user cart if available
       const hasGuestCart = localStorage.getItem('guestCart');
@@ -461,52 +422,37 @@ const ShopContextProvider = ({ children }) => {
         console.log("Found guest cart, syncing...");
         syncGuestCartToServer();
       }
+    } else {
+      // Clear user data when logged out
+      setUserData(null);
     }
-  }, [token, getUserCart, getWishlist, syncGuestCartToServer]);
+  }, [token, getUserCart, getWishlist, syncGuestCartToServer, getUserProfile]);
 
-  // Add a function to refresh all user data
-  const refreshUserData = useCallback(() => {
-    if (token) {
-      // Increment the refresh trigger to force re-fetching
-      setRefreshTrigger(prev => prev + 1);
-      
-      // Add error handling for data fetching
-      try {
-        getUserCart();
-      } catch (error) {
-        console.error("Error refreshing cart:", error);
+  // Update user profile data (for avatar updates, etc.)
+  const updateUserData = useCallback(async (updates) => {
+    try {
+      if (!token || !userData) {
+        console.log("No token or user data, skipping updateUserData");
+        return;
       }
       
-      try {
-        getWishlist();
-      } catch (error) {
-        console.error("Error refreshing wishlist:", error);
+      console.log("Updating user data with:", updates);
+      
+      // Update local state immediately for a responsive UI
+      setUserData(prev => ({ ...prev, ...updates }));
+      
+      // If updating avatar with a Cloudinary URL, store it in localStorage
+      if (updates.avatar && updates.avatar.includes('cloudinary.com')) {
+        localStorage.setItem('cloudinary_avatar_url', updates.avatar);
+        localStorage.setItem('avatar_updated', new Date().getTime());
       }
       
-      // Set a flag in localStorage to indicate data is being refreshed
-      localStorage.setItem('dataRefreshing', 'true');
-      localStorage.setItem('lastRefreshTime', Date.now());
+      // No need to make an API call here as the component making the update
+      // will already be calling the API
+    } catch (error) {
+      console.error("Error updating user data:", error);
     }
-  }, [token, getUserCart, getWishlist]);
-
-  // Set up a listener for route changes to refresh data
-  useEffect(() => {
-    const handleRouteChange = () => {
-      console.log('Route changed, refreshing data');
-      // Only refresh if we haven't refreshed in the last 2 seconds
-      const lastRefresh = localStorage.getItem('lastRefreshTime');
-      if (!lastRefresh || (Date.now() - parseInt(lastRefresh)) > 2000) {
-        refreshUserData();
-      }
-    };
-    
-    // Listen for navigation events
-    window.addEventListener('popstate', handleRouteChange);
-    
-    return () => {
-      window.removeEventListener('popstate', handleRouteChange);
-    };
-  }, [refreshUserData]);
+  }, [token, userData]);
 
   const value = {
     navigate,
@@ -530,10 +476,13 @@ const ShopContextProvider = ({ children }) => {
     isInWishlist,
     clearCart,
     formatPrice,
-    refreshUserData,
+    // Add user profile data and functions
+    userData,
+    setUserData,
+    updateUserData,
+    getUserProfile,
+    // Add cart syncing state
     isCartSyncing,
-    refreshTrigger,
-    setRefreshTrigger
   };
 
   return (
