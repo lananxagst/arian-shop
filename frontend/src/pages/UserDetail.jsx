@@ -1,5 +1,5 @@
 import { useEffect, useState, useContext } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import Footer from "../components/Footer";
 import { Link, useNavigate } from "react-router-dom";
 import { ShopContext } from "../context/ShopContext";
@@ -48,9 +48,7 @@ const UserDetail = () => {
           return;
         }
         
-        const res = await axios.get(`${backendUrl}/api/user/me`, {
-          headers: { Authorization: `Bearer ${token}` }  
-        });
+        const res = await api.get('/api/user/me');
         
         if (res.data.success) {
           setUser(res.data.user);
@@ -70,10 +68,9 @@ const UserDetail = () => {
           return;
         }
         
-        const response = await axios.post(
-          `${backendUrl}/api/order/userorders`,
-          {},
-          { headers: { token } }  
+        const response = await api.post(
+          '/api/order/userorders',
+          {}
         );
         
         if (response.data.success) {
@@ -123,7 +120,7 @@ const UserDetail = () => {
                   referrerPolicy="no-referrer"
                 />
                 <Link 
-                  to="/profile/edit" 
+                  to="/update-profile" 
                   className="absolute bottom-0 right-0 bg-secondary text-white p-2 rounded-full shadow-lg hover:bg-tertiary transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
