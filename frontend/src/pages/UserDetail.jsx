@@ -37,12 +37,22 @@ const UserDetail = () => {
     // Add a timestamp to the URL to prevent caching
     const timestamp = new Date().getTime();
     
+    // Check localStorage for a recently updated avatar
+    const lastAvatarUpdate = localStorage.getItem('avatar_updated');
+    const cloudinaryUrl = localStorage.getItem('cloudinary_avatar_url');
+    
+    // If we have a recently updated Cloudinary URL in localStorage, use it
+    if (cloudinaryUrl && lastAvatarUpdate && (Date.now() - parseInt(lastAvatarUpdate) < 60000)) {
+      console.log('Using recently updated Cloudinary URL from localStorage:', cloudinaryUrl);
+      return `${cloudinaryUrl}?t=${timestamp}`;
+    }
+    
     if (user.avatar) {
       // If it's a Cloudinary URL, use it directly with a cache-busting parameter
       if (user.avatar.includes('cloudinary.com')) {
-        const cloudinaryUrl = `${user.avatar}?t=${timestamp}`;
-        console.log('Using Cloudinary image URL:', cloudinaryUrl);
-        return cloudinaryUrl;
+        const url = `${user.avatar}?t=${timestamp}`;
+        console.log('Using Cloudinary image URL from user data:', url);
+        return url;
       }
       
       // Log the type of avatar value
