@@ -84,22 +84,44 @@ const UserDetail = () => {
         return;
       }
       
-      const res = await api.get('/api/user/me');
-      
-      if (res.data.success) {
-        console.log('User data from API:', res.data.user);
-        console.log('Avatar URL from API:', res.data.user.avatar);
-        
-        // Make sure we're using the latest avatar URL
-        // This is especially important after a profile update
-        const userData = res.data.user;
-        
-        // Force a refresh of the component by setting a new object
-        setUser({...userData});
+      // Try to get cached user data from localStorage first
+      const cachedUser = localStorage.getItem('userData');
+      if (cachedUser) {
+        try {
+          const parsedUser = JSON.parse(cachedUser);
+          setUser(parsedUser);
+        } catch (parseError) {
+          console.error("Error parsing cached user data:", parseError);
+        }
       }
+      
+      // Set a timeout to prevent hanging indefinitely
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        const res = await api.get('/api/user/me', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (res.data.success) {
+          const userData = {...res.data.user};
+          setUser(userData);
+          
+          // Cache the user data
+          localStorage.setItem('userData', JSON.stringify(userData));
+          localStorage.setItem('userDataLastUpdated', Date.now());
+        }
+      } catch (apiError) {
+        console.error("API Error fetching user details:", apiError);
+        // If we have cached data, don't show an error toast
+        if (!cachedUser) {
+          // toast.error("Could not load user data. Using cached data if available.");
+        }
+      }
+      
       setIsLoading(false);
     } catch (error) {
-      console.error("Error fetching user details", error);
+      console.error("Error in fetchUserData:", error);
       setIsLoading(false);
     }
   }, [token]); // Only recreate if token changes
@@ -109,39 +131,61 @@ const UserDetail = () => {
     try {
       setIsLoading(true);
       if (!token) {
-        console.log("No token, skipping loadOrderData");
         setIsLoading(false);
         return;
       }
       
-      const response = await api.post(
-        '/api/order/userorders',
-        {}
-      );
-      
-      if (response.data.success) {
-        let allOrdersItem = [];
-        response.data.orders.forEach((order) => {
-          order.items.forEach((item) => {
-            item["status"] = order.status;
-            item["payment"] = order.payment;
-            item["paymentMethod"] = order.paymentMethod;
-            item["date"] = order.date;
-            allOrdersItem.push(item);
-          });
-        });
-        
-        // Create a new array to ensure React detects the change
-        const newOrders = allOrdersItem.reverse();
-        setOrderData(newOrders);
-        
-        // Store in localStorage for quick access
-        localStorage.setItem('userOrders', JSON.stringify(newOrders));
-        localStorage.setItem('ordersLastUpdated', Date.now());
+      // Try to get cached orders from localStorage first
+      const cachedOrders = localStorage.getItem('userOrders');
+      if (cachedOrders) {
+        try {
+          const parsedOrders = JSON.parse(cachedOrders);
+          setOrderData(parsedOrders);
+        } catch (parseError) {
+          console.error("Error parsing cached orders:", parseError);
+        }
       }
+      
+      // Set a timeout to prevent hanging indefinitely
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        const response = await api.post(
+          '/api/order/userorders',
+          {},
+          { signal: controller.signal }
+        );
+        clearTimeout(timeoutId);
+        
+        if (response.data.success) {
+          let allOrdersItem = [];
+          response.data.orders.forEach((order) => {
+            order.items.forEach((item) => {
+              item["status"] = order.status;
+              item["payment"] = order.payment;
+              item["paymentMethod"] = order.paymentMethod;
+              item["date"] = order.date;
+              allOrdersItem.push(item);
+            });
+          });
+          
+          // Create a new array to ensure React detects the change
+          const newOrders = allOrdersItem.reverse();
+          setOrderData(newOrders);
+          
+          // Store in localStorage for quick access
+          localStorage.setItem('userOrders', JSON.stringify(newOrders));
+          localStorage.setItem('ordersLastUpdated', Date.now());
+        }
+      } catch (apiError) {
+        console.error("API Error fetching orders:", apiError);
+        // We already have displayed cached data if available, so no need for a toast
+      }
+      
       setIsLoading(false);
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      console.error("Error in loadOrderData:", error);
       setIsLoading(false);
     }
   }, [token]); // Only recreate if token changes
