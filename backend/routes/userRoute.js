@@ -63,7 +63,8 @@ userRouter.put(
         userId,
         name,
         hasPassword: !!password,
-        hasAvatar: !!avatar
+        hasAvatar: !!avatar,
+        avatarValue: avatar
       });
       
       // Initialize updateData with the form fields
@@ -73,7 +74,20 @@ userRouter.put(
       if (bio !== undefined) updateData.bio = bio;
       if (phone !== undefined) updateData.phone = phone;
       if (address !== undefined) updateData.address = address;
-      if (avatar !== undefined) updateData.avatar = avatar;
+      
+      // Handle avatar specially to ensure Cloudinary URLs are saved correctly
+      if (avatar !== undefined) {
+        console.log('Avatar update requested with value:', avatar);
+        
+        // If it's a Cloudinary URL, use it directly
+        if (typeof avatar === 'string' && avatar.includes('cloudinary.com')) {
+          console.log('Saving Cloudinary URL to user profile:', avatar);
+          updateData.avatar = avatar;
+        } else if (avatar) {
+          // For other values, save as is
+          updateData.avatar = avatar;
+        }
+      }
       
       // Hash password if provided
       if (password) {

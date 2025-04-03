@@ -118,7 +118,9 @@ const EditProfile = () => {
               // Update the user state with the new avatar URL
               setUser(prev => ({ ...prev, avatar: cloudinaryUrl }));
               
-              // Force a cache refresh by adding a timestamp to localStorage
+              // Store the Cloudinary URL and timestamp in localStorage
+              // This allows immediate use of the new avatar before the backend update is reflected
+              localStorage.setItem('cloudinary_avatar_url', cloudinaryUrl);
               localStorage.setItem('avatar_updated', new Date().getTime());
             } else {
               toast.error("Failed to update profile picture");
