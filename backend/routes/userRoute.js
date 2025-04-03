@@ -35,15 +35,8 @@ userRouter.get("/me", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 });
-// Konfigurasi penyimpanan gambar
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Simpan gambar di folder "uploads"
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${req.user.id}-${Date.now()}${path.extname(file.originalname)}`);
-  },
-});
+// Use memory storage instead of disk storage for Vercel compatibility
+const storage = multer.memoryStorage();
 
 // Filter hanya menerima file gambar
 const fileFilter = (req, file, cb) => {
@@ -72,16 +65,24 @@ userRouter.put(
       // Handle avatar upload to Cloudinary if a file was uploaded
       if (req.file) {
         try {
-          const result = await cloudinary.uploader.upload(req.file.path, {
+          // Convert buffer to base64 string for Cloudinary upload
+          const fileBuffer = req.file.buffer;
+          const fileStr = `data:${req.file.mimetype};base64,${fileBuffer.toString('base64')}`;
+          
+          // Upload to Cloudinary
+          const result = await cloudinary.uploader.upload(fileStr, {
             resource_type: "image",
             folder: "user-avatars",
           });
+          
+          console.log("Cloudinary upload result:", result);
           updateData.avatar = result.secure_url;
         } catch (cloudinaryError) {
           console.error("Cloudinary upload error:", cloudinaryError);
           return res.status(500).json({ 
             success: false, 
-            message: "Error uploading avatar image" 
+            message: "Error uploading avatar image",
+            error: cloudinaryError.message
           });
         }
       }

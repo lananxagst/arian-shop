@@ -11,8 +11,8 @@ const ShopContextProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState({});
   const [wishlist, setWishlist] = useState([]);
   const [token, setToken] = useState("");
+  // isCartSyncing is used in the syncGuestCartToServer function
   const [isCartSyncing, setIsCartSyncing] = useState(false);
-  const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const navigate = useNavigate();
   const currency = "IDR";
   const delivery_charges = 10;
@@ -409,7 +409,6 @@ const ShopContextProvider = ({ children }) => {
     getCartAmount,
     token,
     setToken,
-    backendUrl,
     wishlist,
     toggleWishlist,
     addToWishlist,
