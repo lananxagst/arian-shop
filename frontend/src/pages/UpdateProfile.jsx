@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import api from '../utils/api';
+
+// Get backend URL from environment variables
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://arianshop-backend.vercel.app';
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -18,10 +21,7 @@ const EditProfile = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:4000/api/user/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await api.get('/api/user/me');
 
         console.log("User API response:", res.data);
         if (res.data.success) {
@@ -47,7 +47,6 @@ const EditProfile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("token");
       const formData = new FormData();
       formData.append("name", user.name);
       formData.append("bio", user.bio);
@@ -64,12 +63,11 @@ const EditProfile = () => {
         formData.append("avatar", user.avatar);
       }
 
-      const res = await axios.put(
-        "http://localhost:4000/api/user/update",
+      const res = await api.put(
+        '/api/user/update',
         formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "multipart/form-data",
           },
         }
@@ -150,7 +148,7 @@ const EditProfile = () => {
                 typeof user.avatar === "string"
                   ? user.avatar.startsWith("http")
                     ? user.avatar
-                    : `http://localhost:4000${user.avatar}`
+                    : `${backendUrl}${user.avatar}`
                   : URL.createObjectURL(user.avatar) // Preview gambar yang di-upload
               }
               alt="Profile Avatar"

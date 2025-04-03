@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import axios from "axios";
+import api from "../utils/api";
 import PropTypes from 'prop-types';
 import { ShopContext } from "./ShopContext";
 
@@ -49,10 +49,9 @@ const ShopContextProvider = ({ children }) => {
     } else {
       try {
         console.log("Adding to server cart with token:", token);
-        const response = await axios.post(
-          backendUrl + "/api/cart/add",
-          { itemId, color },
-          { headers: { token } }
+        const response = await api.post(
+          "/api/cart/add",
+          { itemId, color }
         );
         console.log("Server response:", response.data);
         
@@ -96,10 +95,9 @@ const ShopContextProvider = ({ children }) => {
     } else {
       try {
         console.log("Updating server cart with token:", token);
-        const response = await axios.post(
-          backendUrl + "/api/cart/update",
-          { itemId, color, quantity },
-          { headers: { token } }
+        const response = await api.post(
+          "/api/cart/update",
+          { itemId, quantity, color }
         );
         console.log("Server response:", response.data);
       } catch (error) {
@@ -139,9 +137,7 @@ const ShopContextProvider = ({ children }) => {
   const getWishlist = useCallback(async () => {
     try {
       console.log("Fetching wishlist with token:", token);
-      const response = await axios.get(backendUrl + "/api/user/wishlist", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get("/api/user/wishlist");
       console.log("Wishlist response:", response.data);
       if (response.data.success) {
         setWishlist(response.data.wishlist);
@@ -161,10 +157,9 @@ const ShopContextProvider = ({ children }) => {
         return;
       }
       
-      const response = await axios.post(
-        backendUrl + "/api/user/wishlist/toggle",
-        { productId },
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await api.post(
+        "/api/user/wishlist/toggle",
+        { productId }
       );
       if (response.data.success) {
         setWishlist(response.data.wishlist);
@@ -185,10 +180,9 @@ const ShopContextProvider = ({ children }) => {
         return;
       }
       
-      const response = await axios.post(
-        backendUrl + "/api/user/wishlist/toggle",
-        { productId },
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await api.post(
+        "/api/user/wishlist/toggle",
+        { productId }
       );
       if (response.data.success) {
         setWishlist(response.data.wishlist);
@@ -206,10 +200,9 @@ const ShopContextProvider = ({ children }) => {
       console.log("Removing from wishlist:", productId);
       console.log("Current wishlist before removal:", wishlist);
       
-      const response = await axios.post(
-        backendUrl + "/api/user/wishlist/remove",
-        { productId },
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await api.post(
+        "/api/user/wishlist/remove",
+        { productId }
       );
       
       console.log("Wishlist removal response:", response.data);
@@ -238,7 +231,7 @@ const ShopContextProvider = ({ children }) => {
 
   const getProductData = useCallback(async () => {
     try {
-      const response = await axios.get(backendUrl + "/api/product/list");
+      const response = await api.get("/api/product/list");
       if (response.data.success) {
         setProducts(response.data.products);
       } else {
@@ -248,7 +241,7 @@ const ShopContextProvider = ({ children }) => {
       console.log(error);
       toast.error(error.message);
     }
-  }, [backendUrl]);
+  }, []);
 
   // GETTING USER CART
   const getUserCart = useCallback(async () => {
@@ -259,10 +252,9 @@ const ShopContextProvider = ({ children }) => {
       }
       
       console.log("Getting user cart with token:", token);
-      const response = await axios.post(
-        backendUrl + "/api/cart/get",
-        {},
-        { headers: { token } }
+      const response = await api.post(
+        "/api/cart/get",
+        {}
       );
       console.log("Get cart response:", response.data);
       if (response.data.success) {
@@ -310,16 +302,15 @@ const ShopContextProvider = ({ children }) => {
       
       // For each item in guest cart, add to user cart
       const updatePromises = [];
-      for (const itemId in guestCart) {
-        for (const color in guestCart[itemId]) {
-          const quantity = guestCart[itemId][color];
+      for (const key in guestCart) {
+        for (const item in guestCart[key]) {
+          const quantity = guestCart[key][item];
           if (quantity > 0) {
-            console.log(`Adding item to server: ${itemId}, color: ${color}, quantity: ${quantity}`);
+            console.log(`Adding item to server: ${key}, color: ${item}, quantity: ${quantity}`);
             // Use addToCart endpoint instead of update to properly handle existing items
-            const updatePromise = axios.post(
-              backendUrl + "/api/cart/add",
-              { itemId, color, quantity: quantity },
-              { headers: { token } }
+            const updatePromise = api.post(
+              "/api/cart/add",
+              { itemId: key, color: item, quantity: quantity }
             );
             updatePromises.push(updatePromise);
           }
@@ -353,10 +344,9 @@ const ShopContextProvider = ({ children }) => {
   const clearCart = async () => {
     try {
       if (token) {
-        await axios.post(
-          backendUrl + "/api/cart/clear",
-          {},
-          { headers: { token } }
+        await api.post(
+          "/api/cart/clear",
+          {}
         );
       } else {
         localStorage.removeItem('guestCart');
