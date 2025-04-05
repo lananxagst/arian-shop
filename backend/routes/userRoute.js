@@ -10,7 +10,7 @@ import {
 } from "../controllers/userController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import userModel from "../models/userModel.js";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 
