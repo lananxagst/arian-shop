@@ -161,7 +161,8 @@ process.on('unhandledRejection', (err) => {
 });
 
 // Start server only if this file is run directly (not imported)
-if (process.env.NODE_ENV !== 'production' || require.main === module) {
+// Using import.meta.url to check if this is the main module (ES modules approach)
+if (process.env.NODE_ENV !== 'production' || import.meta.url.endsWith('server.js')) {
   const server = app.listen(PORT, () => console.log("Server is running on PORT : " + PORT));
 
   // Handle SIGTERM signal (for graceful shutdown in containerized environments)
