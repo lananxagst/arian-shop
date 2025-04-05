@@ -11,17 +11,12 @@
                     "routes/**",
                     "models/**",
                     "controllers/**",
-                    "middleware/**",
-                    "uploads/**"
+                    "middleware/**"
                 ]
             }
         }
     ],
     "routes": [
-        {
-            "src": "/uploads/(.*)",
-            "dest": "/uploads/$1"
-        },
         {
             "src": "/api/(.*)",
             "dest": "/api/index.js"

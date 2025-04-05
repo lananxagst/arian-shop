@@ -12,8 +12,7 @@ import authMiddleware from "../middleware/authMiddleware.js";
 import userModel from "../models/userModel.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
-import path from "path";
-import cloudinary from "../config/cloudinary.js";
+import { v2 as cloudinary } from "cloudinary";
 
 const userRouter = express.Router();
 
@@ -35,10 +34,10 @@ userRouter.get("/me", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 });
-// Use memory storage instead of disk storage for Vercel compatibility
-const storage = multer.memoryStorage();
+// Configure multer for temporary storage
+const storage = multer.memoryStorage(); // Use memory storage instead of disk storage
 
-// Filter hanya menerima file gambar
+// Filter to only accept image files
 const fileFilter = (req, file, cb) => {
   if (file.mimetype.startsWith("image/")) {
     cb(null, true);
@@ -49,47 +48,49 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter });
 
-// Simple endpoint for updating user profile without avatar
+// Endpoint untuk update profil dengan avatar
 userRouter.put(
   "/update",
   authMiddleware,
-  express.json(),
+  upload.single("avatar"),
   async (req, res) => {
     try {
-      const { name, bio, phone, address, password, avatar } = req.body;
+      const { name, bio, phone, address, password } = req.body;
       const userId = req.user.id;
       
-      console.log('Update profile request received:', { 
-        userId,
-        name,
-        hasPassword: !!password,
-        hasAvatar: !!avatar,
-        avatarValue: avatar
-      });
+      const updateData = { name, bio, phone, address };
       
-      // Initialize updateData with the form fields
-      const updateData = { name };
-      
-      // Only add fields if they are provided
-      if (bio !== undefined) updateData.bio = bio;
-      if (phone !== undefined) updateData.phone = phone;
-      if (address !== undefined) updateData.address = address;
-      
-      // Handle avatar specially to ensure Cloudinary URLs are saved correctly
-      if (avatar !== undefined) {
-        console.log('Avatar update requested with value:', avatar);
-        
-        // If it's a Cloudinary URL, use it directly
-        if (typeof avatar === 'string' && avatar.includes('cloudinary.com')) {
-          console.log('Saving Cloudinary URL to user profile:', avatar);
-          updateData.avatar = avatar;
-        } else if (avatar) {
-          // For other values, save as is
-          updateData.avatar = avatar;
+      // Upload avatar to Cloudinary if provided
+      if (req.file) {
+        try {
+          // Convert buffer to base64 string for Cloudinary upload
+          const fileStr = req.file.buffer.toString('base64');
+          const fileType = req.file.mimetype;
+          
+          // Upload to Cloudinary
+          const result = await cloudinary.uploader.upload(
+            `data:${fileType};base64,${fileStr}`,
+            {
+              resource_type: "image",
+              folder: "profile_photos",
+              public_id: `user_${userId}_${Date.now()}`
+            }
+          );
+          
+          // Save Cloudinary URL to user profile
+          updateData.avatar = result.secure_url;
+          console.log("Avatar uploaded to Cloudinary:", result.secure_url);
+        } catch (cloudinaryError) {
+          console.error("Cloudinary upload error:", cloudinaryError);
+          return res.status(500).json({
+            success: false,
+            message: "Error uploading profile photo",
+            error: cloudinaryError.message,
+          });
         }
       }
       
-      // Hash password if provided
+      // Update password if provided
       if (password) {
         const salt = await bcrypt.genSalt(10);
         updateData.password = await bcrypt.hash(password, salt);

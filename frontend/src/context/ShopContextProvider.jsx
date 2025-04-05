@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import api from "../utils/api";
+import axios from "axios";
 import PropTypes from 'prop-types';
 import { ShopContext } from "./ShopContext";
 
@@ -11,10 +11,8 @@ const ShopContextProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState({});
   const [wishlist, setWishlist] = useState([]);
   const [token, setToken] = useState("");
-  // State to track if cart is currently being synced
   const [isCartSyncing, setIsCartSyncing] = useState(false);
-  // Add user profile data state
-  const [userData, setUserData] = useState(null);
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const navigate = useNavigate();
   const currency = "IDR";
   const delivery_charges = 10;
@@ -51,9 +49,10 @@ const ShopContextProvider = ({ children }) => {
     } else {
       try {
         console.log("Adding to server cart with token:", token);
-        const response = await api.post(
-          "/api/cart/add",
-          { itemId, color }
+        const response = await axios.post(
+          backendUrl + "/api/cart/add",
+          { itemId, color },
+          { headers: { token } }
         );
         console.log("Server response:", response.data);
         
@@ -97,9 +96,10 @@ const ShopContextProvider = ({ children }) => {
     } else {
       try {
         console.log("Updating server cart with token:", token);
-        const response = await api.post(
-          "/api/cart/update",
-          { itemId, quantity, color }
+        const response = await axios.post(
+          backendUrl + "/api/cart/update",
+          { itemId, color, quantity },
+          { headers: { token } }
         );
         console.log("Server response:", response.data);
       } catch (error) {
@@ -139,16 +139,18 @@ const ShopContextProvider = ({ children }) => {
   const getWishlist = useCallback(async () => {
     try {
       console.log("Fetching wishlist with token:", token);
-      const response = await api.get("/api/user/wishlist");
+      const response = await axios.get(backendUrl + "/api/user/wishlist", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       console.log("Wishlist response:", response.data);
       if (response.data.success) {
         setWishlist(response.data.wishlist);
+        console.log("Wishlist set to:", response.data.wishlist);
       }
     } catch (error) {
-      console.log(error);
-      toast.error(error.message);
+      console.error("Error fetching wishlist:", error);
     }
-  }, [token]);
+  }, [backendUrl, token]);
 
   // ADDING ITEMS TO WISHLIST
   const toggleWishlist = async (productId) => {
@@ -159,9 +161,10 @@ const ShopContextProvider = ({ children }) => {
         return;
       }
       
-      const response = await api.post(
-        "/api/user/wishlist/toggle",
-        { productId }
+      const response = await axios.post(
+        backendUrl + "/api/user/wishlist/toggle",
+        { productId },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.data.success) {
         setWishlist(response.data.wishlist);
@@ -182,9 +185,10 @@ const ShopContextProvider = ({ children }) => {
         return;
       }
       
-      const response = await api.post(
-        "/api/user/wishlist/toggle",
-        { productId }
+      const response = await axios.post(
+        backendUrl + "/api/user/wishlist/toggle",
+        { productId },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.data.success) {
         setWishlist(response.data.wishlist);
@@ -202,9 +206,10 @@ const ShopContextProvider = ({ children }) => {
       console.log("Removing from wishlist:", productId);
       console.log("Current wishlist before removal:", wishlist);
       
-      const response = await api.post(
-        "/api/user/wishlist/remove",
-        { productId }
+      const response = await axios.post(
+        backendUrl + "/api/user/wishlist/remove",
+        { productId },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       
       console.log("Wishlist removal response:", response.data);
@@ -233,7 +238,7 @@ const ShopContextProvider = ({ children }) => {
 
   const getProductData = useCallback(async () => {
     try {
-      const response = await api.get("/api/product/list");
+      const response = await axios.get(backendUrl + "/api/product/list");
       if (response.data.success) {
         setProducts(response.data.products);
       } else {
@@ -243,101 +248,115 @@ const ShopContextProvider = ({ children }) => {
       console.log(error);
       toast.error(error.message);
     }
-  }, []);
+  }, [backendUrl]);
 
   // GETTING USER CART
   const getUserCart = useCallback(async () => {
     try {
       if (!token) {
-        console.log("No token, skipping getUserCart");
+        console.log("No token available, skipping getUserCart");
         return;
       }
       
       console.log("Getting user cart with token:", token);
-      const response = await api.post(
-        "/api/cart/get",
-        {}
+      const response = await axios.post(
+        backendUrl + "/api/cart/get",
+        {},
+        { headers: { token } }
       );
       console.log("Get cart response:", response.data);
       if (response.data.success) {
         setCartItems(response.data.cartData);
+        return response.data.cartData;
       }
+      return null;
     } catch (error) {
-      console.log(error);
-      toast.error(error.message);
+      console.log("Error getting user cart:", error);
+      toast.error("Failed to get your cart");
+      return null;
     }
-  }, [token]);
+  }, [backendUrl, token]);
 
-  // SYNC GUEST CART TO SERVER AFTER LOGIN
-  const syncGuestCartToServer = useCallback(async () => {
+  // SYNC GUEST CART WITH USER CART AFTER LOGIN
+  const syncGuestCartWithUserCart = useCallback(async () => {
+    if (isCartSyncing) {
+      console.log("Cart sync already in progress, skipping");
+      return;
+    }
+    
     try {
-      if (!token) {
-        console.log("No token, skipping syncGuestCartToServer");
-        return;
-      }
+      setIsCartSyncing(true);
+      console.log("Starting cart sync process");
       
-      // Get guest cart from localStorage
       const guestCartString = localStorage.getItem('guestCart');
       if (!guestCartString) {
-        console.log("No guest cart found");
+        console.log("No guest cart found in localStorage");
+        setIsCartSyncing(false);
         return;
       }
       
       const guestCart = JSON.parse(guestCartString);
-      console.log("Guest cart found:", guestCart);
-      
-      // Check if guest cart is empty
       if (Object.keys(guestCart).length === 0) {
         console.log("Guest cart is empty");
+        setIsCartSyncing(false);
         return;
       }
       
-      setIsCartSyncing(true);
-      toast.info("Syncing your cart...");
+      console.log("Syncing guest cart with token:", token);
+      console.log("Guest cart data:", guestCart);
+      
+      // Instead of clearing the server cart first, let's add items one by one
+      // This way we preserve any items already in the user's cart
       
       // For each item in guest cart, add to user cart
       const updatePromises = [];
-      for (const key in guestCart) {
-        for (const item in guestCart[key]) {
-          const quantity = guestCart[key][item];
+      for (const itemId in guestCart) {
+        for (const color in guestCart[itemId]) {
+          const quantity = guestCart[itemId][color];
           if (quantity > 0) {
-            console.log(`Adding item to server: ${key}, color: ${item}, quantity: ${quantity}`);
+            console.log(`Adding item to server: ${itemId}, color: ${color}, quantity: ${quantity}`);
             // Use addToCart endpoint instead of update to properly handle existing items
-            const updatePromise = api.post(
-              "/api/cart/add",
-              { itemId: key, color: item, quantity: quantity }
+            const updatePromise = axios.post(
+              backendUrl + "/api/cart/add",
+              { itemId, color, quantity: quantity },
+              { headers: { token } }
             );
             updatePromises.push(updatePromise);
           }
         }
       }
       
+      // Wait for all updates to complete
       await Promise.all(updatePromises);
-      console.log("All items synced to server");
+      console.log("All items added to server cart");
       
-      // Clear guest cart
+      // Clear guest cart after syncing
       localStorage.removeItem('guestCart');
+      console.log("Cleared guest cart from localStorage");
       
-      // Refresh cart from server
-      await getUserCart();
+      // Get updated cart from server
+      const updatedCart = await getUserCart();
+      console.log("Updated cart from server:", updatedCart);
       
-      setIsCartSyncing(false);
-      toast.success("Your cart has been synced!");
-      
+      if (updatedCart) {
+        toast.success("Your cart has been restored");
+      }
     } catch (error) {
-      console.error("Error syncing guest cart:", error);
+      console.error("Failed to sync cart:", error);
       toast.error("Failed to sync your cart");
+    } finally {
       setIsCartSyncing(false);
     }
-  }, [token, getUserCart]);
+  }, [backendUrl, token, getUserCart, isCartSyncing]);
 
   // CLEAR CART
   const clearCart = async () => {
     try {
       if (token) {
-        await api.post(
-          "/api/cart/clear",
-          {}
+        await axios.post(
+          backendUrl + "/api/cart/clear",
+          {},
+          { headers: { token } }
         );
       } else {
         localStorage.removeItem('guestCart');
@@ -379,34 +398,6 @@ const ShopContextProvider = ({ children }) => {
     }
   }, [getProductData, token]);
   
-  // Get user profile data
-  const getUserProfile = useCallback(async () => {
-    try {
-      if (!token) {
-        console.log("No token, skipping getUserProfile");
-        return;
-      }
-      
-      console.log("Getting user profile with token:", token);
-      const response = await api.get("/api/user/me");
-      
-      if (response.data.success) {
-        console.log("User profile data:", response.data.user);
-        setUserData(response.data.user);
-        
-        // Store Cloudinary URL in localStorage for immediate access
-        if (response.data.user.avatar && response.data.user.avatar.includes('cloudinary.com')) {
-          localStorage.setItem('cloudinary_avatar_url', response.data.user.avatar);
-          localStorage.setItem('avatar_updated', new Date().getTime());
-        }
-      } else {
-        console.error("Failed to get user profile:", response.data);
-      }
-    } catch (error) {
-      console.error("Error getting user profile:", error);
-    }
-  }, [token]);
-
   // Handle user-specific data when token changes
   useEffect(() => {
     if (token) {
@@ -414,45 +405,15 @@ const ShopContextProvider = ({ children }) => {
       // Only fetch user-specific data when logged in
       getUserCart();
       getWishlist();
-      getUserProfile();
       
       // Sync guest cart with user cart if available
       const hasGuestCart = localStorage.getItem('guestCart');
       if (hasGuestCart) {
         console.log("Found guest cart, syncing...");
-        syncGuestCartToServer();
+        syncGuestCartWithUserCart();
       }
-    } else {
-      // Clear user data when logged out
-      setUserData(null);
     }
-  }, [token, getUserCart, getWishlist, syncGuestCartToServer, getUserProfile]);
-
-  // Update user profile data (for avatar updates, etc.)
-  const updateUserData = useCallback(async (updates) => {
-    try {
-      if (!token || !userData) {
-        console.log("No token or user data, skipping updateUserData");
-        return;
-      }
-      
-      console.log("Updating user data with:", updates);
-      
-      // Update local state immediately for a responsive UI
-      setUserData(prev => ({ ...prev, ...updates }));
-      
-      // If updating avatar with a Cloudinary URL, store it in localStorage
-      if (updates.avatar && updates.avatar.includes('cloudinary.com')) {
-        localStorage.setItem('cloudinary_avatar_url', updates.avatar);
-        localStorage.setItem('avatar_updated', new Date().getTime());
-      }
-      
-      // No need to make an API call here as the component making the update
-      // will already be calling the API
-    } catch (error) {
-      console.error("Error updating user data:", error);
-    }
-  }, [token, userData]);
+  }, [token, getUserCart, getWishlist, syncGuestCartWithUserCart]);
 
   const value = {
     navigate,
@@ -469,6 +430,7 @@ const ShopContextProvider = ({ children }) => {
     getCartAmount,
     token,
     setToken,
+    backendUrl,
     wishlist,
     toggleWishlist,
     addToWishlist,
@@ -476,13 +438,6 @@ const ShopContextProvider = ({ children }) => {
     isInWishlist,
     clearCart,
     formatPrice,
-    // Add user profile data and functions
-    userData,
-    setUserData,
-    updateUserData,
-    getUserProfile,
-    // Add cart syncing state
-    isCartSyncing,
   };
 
   return (

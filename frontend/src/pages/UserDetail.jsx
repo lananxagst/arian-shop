@@ -1,83 +1,37 @@
 import { useEffect, useState, useContext } from "react";
-import api from "../utils/api";
-import { getImageUrl } from "../utils/imageHelper";
+import axios from "axios";
 import Footer from "../components/Footer";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ShopContext } from "../context/ShopContext";
 import { FaTrash } from "react-icons/fa";
 
 const UserDetail = () => {
-  const { 
-    cartItems, 
-    products, 
-    wishlist, 
-    currency, 
-    token, 
-    clearCart, 
-    removeFromWishlist, 
-    formatPrice, 
-    userData, 
-    getUserProfile 
-  } = useContext(ShopContext);
-  
+  const [user, setUser] = useState(null);
+  const { cartItems, products, wishlist, currency, backendUrl, token, clearCart, removeFromWishlist, formatPrice } = useContext(ShopContext);
   const [activeTab, setActiveTab] = useState("account");
   const [orderData, setOrderData] = useState([]);
   const [isWishlistEmpty, setIsWishlistEmpty] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  // Check if we're coming from a profile update with force refresh
-  const forceRefresh = location.state?.forceRefresh;
 
   // Check if wishlist is empty whenever it changes
   useEffect(() => {
     if (wishlist && Array.isArray(wishlist)) {
+      console.log("Wishlist state changed:", wishlist);
       setIsWishlistEmpty(wishlist.length === 0);
     }
   }, [wishlist]);
 
   const getProfileImage = () => {
-    if (!userData) return '';
+    if (!user) return '';
     
-    console.log('Getting profile image for user:', userData.name);
-    console.log('Avatar value:', userData.avatar);
-    
-    // Force refresh the component when avatar changes
-    // Add a timestamp to the URL to prevent caching
-    const timestamp = new Date().getTime();
-    
-    // Check localStorage for a recently updated avatar
-    const lastAvatarUpdate = localStorage.getItem('avatar_updated');
-    const cloudinaryUrl = localStorage.getItem('cloudinary_avatar_url');
-    
-    // If we have a recently updated Cloudinary URL in localStorage, use it
-    if (cloudinaryUrl && lastAvatarUpdate && (Date.now() - parseInt(lastAvatarUpdate) < 60000)) {
-      console.log('Using recently updated Cloudinary URL from localStorage:', cloudinaryUrl);
-      return `${cloudinaryUrl}?t=${timestamp}`;
+    if (user.avatar) {
+      return user.avatar.startsWith("http")
+        ? user.avatar
+        : `${backendUrl}${user.avatar}`;
     }
-    
-    if (userData.avatar) {
-      // If it's a Cloudinary URL, use it directly with a cache-busting parameter
-      if (userData.avatar.includes('cloudinary.com')) {
-        const url = `${userData.avatar}?t=${timestamp}`;
-        console.log('Using Cloudinary image URL from user data:', url);
-        return url;
-      }
-      
-      // Log the type of avatar value
-      console.log('Avatar type:', typeof userData.avatar);
-      
-      // Otherwise use the image helper
-      const imageUrl = getImageUrl(userData.avatar, userData.name);
-      console.log('Image URL after helper:', imageUrl);
-      return imageUrl;
-    }
-    
-    // Fallback to UI Avatars
-    console.log('No avatar found, using fallback');
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      userData?.name || 'User'
+      user?.name || 'User'
     )}&background=6D28D9&color=ffffff&size=128`;
   };
 
@@ -86,7 +40,7 @@ const UserDetail = () => {
   };
 
   useEffect(() => {
-    const refreshUserData = () => {
+    const fetchUserData = async () => {
       try {
         setIsLoading(true);
         if (!token) {
@@ -94,11 +48,16 @@ const UserDetail = () => {
           return;
         }
         
-        // Use the context function to refresh user data
-        getUserProfile();
+        const res = await axios.get(`${backendUrl}/api/user/me`, {
+          headers: { Authorization: `Bearer ${token}` }  
+        });
+        
+        if (res.data.success) {
+          setUser(res.data.user);
+        }
         setIsLoading(false);
       } catch (error) {
-        console.error("Error refreshing user details", error);
+        console.error("Error fetching user details", error);
         setIsLoading(false);
       }
     };
@@ -111,9 +70,10 @@ const UserDetail = () => {
           return;
         }
         
-        const response = await api.post(
-          '/api/order/userorders',
-          {}
+        const response = await axios.post(
+          `${backendUrl}/api/order/userorders`,
+          {},
+          { headers: { token } }  
         );
         
         if (response.data.success) {
@@ -137,15 +97,15 @@ const UserDetail = () => {
     };
 
     if (token) {
-      refreshUserData();
+      fetchUserData();
       loadOrderData();
     }
-  }, [token, forceRefresh, getUserProfile]);
+  }, [token, backendUrl]);
 
   if (isLoading)
     return <p className="text-gray-30 text-center mt-10">Loading...</p>;
 
-  if (!userData)
+  if (!user)
     return <p className="text-gray-30 text-center mt-10">User not found.</p>;
 
   return (
@@ -155,29 +115,24 @@ const UserDetail = () => {
           {/* Left Sidebar - Profile Info */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex flex-col items-center">
-              <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-200 mb-2">
+              <div className="relative">
                 <img
                   src={getProfileImage()}
-                  alt={userData.name}
-                  className="w-full h-full object-cover"
+                  alt="Profile"
+                  className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md"
+                  referrerPolicy="no-referrer"
                 />
-                <div className="absolute bottom-0 right-0 bg-green-500 rounded-full p-1">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 text-white"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
+                <Link 
+                  to="/profile/edit" 
+                  className="absolute bottom-0 right-0 bg-secondary text-white p-2 rounded-full shadow-lg hover:bg-tertiary transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                   </svg>
-                </div>
+                </Link>
               </div>
-              <h2 className="text-lg font-semibold">{userData.name}</h2>
-              <p className="text-gray-500 text-sm">{userData.bio || ""}</p>
+              <h2 className="mt-4 text-2xl font-semibold text-secondary">{user.name || "User"}</h2>
+              <p className="text-gray-20">{user.bio || "No bio available"}</p>
               <div className="w-full mt-6 space-y-2">
                 <button 
                   onClick={() => setActiveTab("account")}
@@ -233,7 +188,7 @@ const UserDetail = () => {
                     <label className="block text-sm font-medium text-gray-30 mb-2">Name</label>
                     <input
                       type="text"
-                      value={userData.name || ""}
+                      value={user.name || ""}
                       readOnly
                       className="w-full px-4 py-2 border border-gray-10 rounded-lg bg-primary"
                     />
@@ -242,7 +197,7 @@ const UserDetail = () => {
                     <label className="block text-sm font-medium text-gray-30 mb-2">Email</label>
                     <input
                       type="email"
-                      value={userData.email || ""}
+                      value={user.email || ""}
                       readOnly
                       className="w-full px-4 py-2 border border-gray-10 rounded-lg bg-primary"
                     />
@@ -251,7 +206,7 @@ const UserDetail = () => {
                     <label className="block text-sm font-medium text-gray-30 mb-2">Phone</label>
                     <input
                       type="text"
-                      value={userData.phone || "Not provided"}
+                      value={user.phone || "Not provided"}
                       readOnly
                       className="w-full px-4 py-2 border border-gray-10 rounded-lg bg-primary"
                     />
@@ -260,7 +215,7 @@ const UserDetail = () => {
                     <label className="block text-sm font-medium text-gray-30 mb-2">Address</label>
                     <input
                       type="text"
-                      value={userData.address || "Not provided"}
+                      value={user.address || "Not provided"}
                       readOnly
                       className="w-full px-4 py-2 border border-gray-10 rounded-lg bg-primary"
                     />
