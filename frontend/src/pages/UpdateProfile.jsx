@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 
 const EditProfile = () => {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState({
     name: "",
     email: "",
@@ -46,6 +47,9 @@ const EditProfile = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    // Show loading toast
+    const loadingToast = toast.loading("Updating profile...");
     try {
       const token = localStorage.getItem("token");
       const formData = new FormData();
@@ -76,7 +80,14 @@ const EditProfile = () => {
       );
 
       if (res.data.success) {
-        toast.success("Profile updated successfully");
+        // Update the loading toast to success
+        toast.update(loadingToast, {
+          render: "Profile updated successfully",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000
+        });
+        
         // Clear password field after successful update
         setUser({ ...user, password: "" });
         
@@ -87,7 +98,16 @@ const EditProfile = () => {
       }
     } catch (error) {
       console.error("Error updating profile", error);
-      toast.error("Failed to update profile: " + (error.response?.data?.message || error.message));
+      
+      // Update the loading toast to error
+      toast.update(loadingToast, {
+        render: "Failed to update profile: " + (error.response?.data?.message || error.message),
+        type: "error",
+        isLoading: false,
+        autoClose: 3000
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -169,8 +189,9 @@ const EditProfile = () => {
           <button
             type="submit"
             className="w-full bg-gray-900 text-white p-2 rounded-lg hover:bg-gray-700 transition"
+            disabled={isLoading}
           >
-            Save Changes
+            {isLoading ? "Updating..." : "Save Changes"}
           </button>
         </form>
       </div>

@@ -12,7 +12,7 @@ import authMiddleware from "../middleware/authMiddleware.js";
 import userModel from "../models/userModel.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
-import path from "path";
+import { v2 as cloudinary } from "cloudinary";
 
 const userRouter = express.Router();
 
@@ -34,17 +34,10 @@ userRouter.get("/me", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 });
-// Konfigurasi penyimpanan gambar
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Simpan gambar di folder "uploads"
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${req.user.id}-${Date.now()}${path.extname(file.originalname)}`);
-  },
-});
+// Configure multer for temporary storage
+const storage = multer.memoryStorage(); // Use memory storage instead of disk storage
 
-// Filter hanya menerima file gambar
+// Filter to only accept image files
 const fileFilter = (req, file, cb) => {
   if (file.mimetype.startsWith("image/")) {
     cb(null, true);
@@ -64,10 +57,40 @@ userRouter.put(
     try {
       const { name, bio, phone, address, password } = req.body;
       const userId = req.user.id;
-      const avatar = req.file ? `/uploads/${req.file.filename}` : undefined;
-
+      
       const updateData = { name, bio, phone, address };
-      if (avatar) updateData.avatar = avatar;
+      
+      // Upload avatar to Cloudinary if provided
+      if (req.file) {
+        try {
+          // Convert buffer to base64 string for Cloudinary upload
+          const fileStr = req.file.buffer.toString('base64');
+          const fileType = req.file.mimetype;
+          
+          // Upload to Cloudinary
+          const result = await cloudinary.uploader.upload(
+            `data:${fileType};base64,${fileStr}`,
+            {
+              resource_type: "image",
+              folder: "profile_photos",
+              public_id: `user_${userId}_${Date.now()}`
+            }
+          );
+          
+          // Save Cloudinary URL to user profile
+          updateData.avatar = result.secure_url;
+          console.log("Avatar uploaded to Cloudinary:", result.secure_url);
+        } catch (cloudinaryError) {
+          console.error("Cloudinary upload error:", cloudinaryError);
+          return res.status(500).json({
+            success: false,
+            message: "Error uploading profile photo",
+            error: cloudinaryError.message,
+          });
+        }
+      }
+      
+      // Update password if provided
       if (password) {
         const salt = await bcrypt.genSalt(10);
         updateData.password = await bcrypt.hash(password, salt);
