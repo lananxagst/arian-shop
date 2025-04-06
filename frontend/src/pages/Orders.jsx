@@ -6,7 +6,7 @@ import Footer from "../components/Footer";
 import { FaImage } from "react-icons/fa";
 
 const Orders = () => {
-  const { backendUrl, token, currency } = useContext(ShopContext);
+  const { backend_url, token, currency } = useContext(ShopContext);
   const [orderData, setOrderData] = useState([]);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [selectedEvidence, setSelectedEvidence] = useState(null);
@@ -25,7 +25,7 @@ const Orders = () => {
         return null;
       }
       const response = await axios.post(
-        backendUrl + "/api/order/userorders",
+        backend_url + "/api/order/userorders",
         {},
         { headers: { token } }
       );
@@ -48,7 +48,7 @@ const Orders = () => {
     } catch (error) {
       console.log("Error loading orders:", error);
     }
-  }, [token, backendUrl]);
+  }, [token, backend_url]);
 
   const handleViewEvidence = (evidence) => {
     setSelectedEvidence(evidence);
@@ -70,7 +70,7 @@ const Orders = () => {
     if (isAbsoluteUrl(evidenceUrl)) {
       return evidenceUrl; // It's already a complete URL (Cloudinary)
     }
-    return backendUrl + evidenceUrl; // It's a relative URL, prepend backend URL
+    return backend_url + evidenceUrl; // It's a relative URL, prepend backend URL
   };
 
   // Get status description based on order status
@@ -105,7 +105,7 @@ const Orders = () => {
     return () => {
       clearInterval(interval);
     };
-  }, [loadOrderData, token, backendUrl]); // Fix the React Hook useEffect dependency array warning
+  }, [loadOrderData, token]); // Fix the React Hook useEffect dependency array warning
 
   return (
     <div>

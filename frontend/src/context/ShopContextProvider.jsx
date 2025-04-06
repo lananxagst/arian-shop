@@ -431,7 +431,7 @@ const ShopContextProvider = ({ children }) => {
     getCartAmount,
     token,
     setToken,
-    backendUrl,
+    backend_url,
     wishlist,
     toggleWishlist,
     addToWishlist,
