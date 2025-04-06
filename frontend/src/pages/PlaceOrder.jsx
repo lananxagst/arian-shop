@@ -17,7 +17,7 @@ const PlaceOrder = () => {
     setCartItems,
     getCartAmount,
     token,
-    backendUrl,
+    backend_url,
   } = useContext(ShopContext);
   const location = useLocation();
   const directCheckout = location.state?.directCheckout || false;
@@ -29,7 +29,7 @@ const PlaceOrder = () => {
     try {
       console.log("PlaceOrder: Fetching cart data with token:", token);
       const response = await axios.post(
-        backendUrl + "/api/cart/get",
+        backend_url + "/api/cart/get",
         {},
         { headers: { token } }
       );
@@ -45,7 +45,7 @@ const PlaceOrder = () => {
     } catch (error) {
       console.error("PlaceOrder: Error fetching cart data:", error);
     }
-  }, [backendUrl, token, setCartItems]);
+  }, [token, setCartItems, backend_url]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -137,7 +137,7 @@ const PlaceOrder = () => {
         // API CALL FOR COD
         case "cod": {
           const response = await axios.post(
-            backendUrl + "/api/order/place",
+            backend_url + "/api/order/place",
             orderData,
             { headers: { token } }
           );
@@ -158,7 +158,7 @@ const PlaceOrder = () => {
         // API CALL FOR STRIPE
         case "stripe": {
           const responseStripe = await axios.post(
-            backendUrl + "/api/order/stripe",
+            backend_url + "/api/order/stripe",
             orderData,
             { headers: { token } }
           );

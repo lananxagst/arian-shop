@@ -7,6 +7,7 @@ import CartTotal from "../components/CartTotal";
 import Footer from "../components/Footer";
 import { toast } from "react-toastify";
 import axios from "axios";
+import { backend_url } from "../config";
 
 const Cart = () => {
   const {
@@ -18,7 +19,7 @@ const Cart = () => {
     getCartCount,
     updateQuantity,
     token,
-    backendUrl
+    // backend_url is now imported from config
   } = useContext(ShopContext);
 
   const [cartData, setCartData] = useState([]);
@@ -34,7 +35,7 @@ const Cart = () => {
       setIsLoading(true);
       
       const response = await axios.post(
-        backendUrl + "/api/cart/get",
+        backend_url + "/api/cart/get",
         {},
         { headers: { token } }
       );
@@ -53,7 +54,7 @@ const Cart = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [token, backendUrl, setCartItems]);
+  }, [token, setCartItems]);
 
   // Process cart items into a format for display
   useEffect(() => {

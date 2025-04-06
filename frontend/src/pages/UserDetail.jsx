@@ -7,7 +7,7 @@ import { FaTrash } from "react-icons/fa";
 
 const UserDetail = () => {
   const [user, setUser] = useState(null);
-  const { cartItems, products, wishlist, currency, backendUrl, token, clearCart, removeFromWishlist, formatPrice } = useContext(ShopContext);
+  const { cartItems, products, wishlist, currency, backend_url, token, clearCart, removeFromWishlist, formatPrice } = useContext(ShopContext);
   const [activeTab, setActiveTab] = useState("account");
   const [orderData, setOrderData] = useState([]);
   const [isWishlistEmpty, setIsWishlistEmpty] = useState(true);
@@ -28,7 +28,7 @@ const UserDetail = () => {
     if (user.avatar) {
       return user.avatar.startsWith("http")
         ? user.avatar
-        : `${backendUrl}${user.avatar}`;
+        : `${backend_url}${user.avatar}`;
     }
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
       user?.name || 'User'
@@ -48,7 +48,7 @@ const UserDetail = () => {
           return;
         }
         
-        const res = await axios.get(`${backendUrl}/api/user/me`, {
+        const res = await axios.get(`${backend_url}/api/user/me`, {
           headers: { Authorization: `Bearer ${token}` }  
         });
         
@@ -71,7 +71,7 @@ const UserDetail = () => {
         }
         
         const response = await axios.post(
-          `${backendUrl}/api/order/userorders`,
+          `${backend_url}/api/order/userorders`,
           {},
           { headers: { token } }  
         );
@@ -100,7 +100,7 @@ const UserDetail = () => {
       fetchUserData();
       loadOrderData();
     }
-  }, [token, backendUrl]);
+  }, [token, backend_url]);
 
   if (isLoading)
     return <p className="text-gray-30 text-center mt-10">Loading...</p>;

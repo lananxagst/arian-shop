@@ -9,7 +9,7 @@ import { useLocation } from "react-router-dom";
 
 const Login = () => {
   const [currState, setCurrState] = useState("Sign Up");
-  const { token, setToken, navigate, backendUrl } = useContext(ShopContext);
+  const { token, setToken, navigate, backend_url } = useContext(ShopContext);
 
   const location = useLocation();
   const returnTo = location.state?.returnTo || "/";
@@ -61,7 +61,7 @@ const Login = () => {
     event.preventDefault();
     try {
       if (currState === "Sign Up") {
-        const response = await axios.post(backendUrl + "/api/user/register", {
+        const response = await axios.post(backend_url + "/api/user/register", {
           name,
           email,
           password,
@@ -73,7 +73,7 @@ const Login = () => {
           toast.error(response.data.message);
         }
       } else {
-        const response = await axios.post(backendUrl + "/api/user/login", {
+        const response = await axios.post(backend_url + "/api/user/login", {
           email,
           password,
         });
@@ -102,7 +102,7 @@ const Login = () => {
 
         // Kirim data ke backend untuk verifikasi atau registrasi
         const loginResponse = await axios.post(
-          backendUrl + "/api/user/login-google",
+          backend_url + "/api/user/login-google",
           {
             name: data.name,
             email: data.email,

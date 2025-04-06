@@ -9,7 +9,7 @@ import Footer from "../components/Footer";
 const PaymentSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { backendUrl, token, setCartItems } = useContext(ShopContext);
+  const { backend_url, token, setCartItems } = useContext(ShopContext);
   const [loading, setLoading] = useState(true);
   const [orderDetails, setOrderDetails] = useState(null);
 
@@ -29,7 +29,7 @@ const PaymentSuccess = () => {
 
         // Update order payment status
         const response = await axios.post(
-          `${backendUrl}/api/order/update-payment`,
+          `${backend_url}/api/order/update-payment`,
           { orderId, paymentStatus: true },
           { headers: { token } }
         );
@@ -55,7 +55,7 @@ const PaymentSuccess = () => {
     } else {
       navigate("/login", { state: { returnTo: location.pathname + location.search } });
     }
-  }, [token, backendUrl, location, navigate, setCartItems]);
+  }, [token, location, navigate, setCartItems, backend_url]);
 
   return (
     <div>
