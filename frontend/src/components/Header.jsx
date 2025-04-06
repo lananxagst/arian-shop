@@ -1,13 +1,14 @@
 import { useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ShopContext } from "../context/ShopContext";
 import axios from "axios";
+import { toast } from "react-toastify";
+import { backend_url } from "../config";
 import Navbar from "./Navbar";
 import { FaBars, FaBarsStaggered } from "react-icons/fa6";
 import { TbUserCircle } from "react-icons/tb";
 import { RiUserLine } from "react-icons/ri";
-import { ShopContext } from "../context/ShopContext";
 import { FaCartShopping } from "react-icons/fa6";
-import { toast } from "react-toastify";
 
 const Header = () => {
   const [menuOpened, setMenuOpened] = useState(false);
@@ -28,7 +29,7 @@ const Header = () => {
     const fetchUser = async () => {
       if (token) {
         try {
-          const res = await axios.get("http://localhost:4000/api/user/me", {
+          const res = await axios.get(`${backend_url}/api/user/me`, {
             headers: { Authorization: `Bearer ${token}` },
           });
 
@@ -101,7 +102,7 @@ const Header = () => {
                       src={
                         user.avatar.startsWith("http")
                           ? user.avatar
-                          : `http://localhost:4000${user.avatar}`
+                          : `${backend_url}${user.avatar}`
                       }
                       alt="User Avatar"
                       className="w-10 h-10 rounded-full border-2 border-gray-300 object-cover"

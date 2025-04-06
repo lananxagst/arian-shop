@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { FaDribbble, FaFacebookF, FaInstagram } from 'react-icons/fa6'
 import { toast } from 'react-toastify'
 import axios from 'axios'
+import { backend_url } from '../config';
 
 const NewsLetter = () => {
   const [email, setEmail] = useState('');
@@ -20,7 +21,7 @@ const NewsLetter = () => {
     
     try {
       // Send subscription to backend API
-      const response = await axios.post('http://localhost:4000/api/subscribers', { email });
+      const response = await axios.post(`${backend_url}/api/subscribers`, { email });
       
       console.log('Subscription response:', response.data);
       

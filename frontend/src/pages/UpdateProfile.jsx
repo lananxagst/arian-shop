@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { backend_url } from "../config";
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ const EditProfile = () => {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:4000/api/user/me", {
+        const res = await axios.get(`${backend_url}/api/user/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -69,7 +70,7 @@ const EditProfile = () => {
       }
 
       const res = await axios.put(
-        "http://localhost:4000/api/user/update",
+        `${backend_url}/api/user/update`,
         formData,
         {
           headers: {
@@ -170,7 +171,7 @@ const EditProfile = () => {
                 typeof user.avatar === "string"
                   ? user.avatar.startsWith("http")
                     ? user.avatar
-                    : `http://localhost:4000${user.avatar}`
+                    : `${backend_url}${user.avatar}`
                   : URL.createObjectURL(user.avatar) // Preview gambar yang di-upload
               }
               alt="Profile Avatar"
