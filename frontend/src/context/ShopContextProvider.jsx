@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import axios from "axios";
 import PropTypes from 'prop-types';
 import { ShopContext } from "./ShopContext";
+import { backend_url, currency as currencySymbol, delivery_charges as deliveryFee } from "../config";
 
 const ShopContextProvider = ({ children }) => {
   const [search, setSearch] = useState("");
@@ -12,10 +13,10 @@ const ShopContextProvider = ({ children }) => {
   const [wishlist, setWishlist] = useState([]);
   const [token, setToken] = useState("");
   const [isCartSyncing, setIsCartSyncing] = useState(false);
-  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+  // Using backend_url from config.js instead of environment variable
   const navigate = useNavigate();
-  const currency = "IDR";
-  const delivery_charges = 10;
+  const currency = currencySymbol;
+  const delivery_charges = deliveryFee;
 
   // ADDING ITEMS TO CART
   const addToCart = async (itemId, color) => {
@@ -50,7 +51,7 @@ const ShopContextProvider = ({ children }) => {
       try {
         console.log("Adding to server cart with token:", token);
         const response = await axios.post(
-          backendUrl + "/api/cart/add",
+          backend_url + "/api/cart/add",
           { itemId, color },
           { headers: { token } }
         );
@@ -97,7 +98,7 @@ const ShopContextProvider = ({ children }) => {
       try {
         console.log("Updating server cart with token:", token);
         const response = await axios.post(
-          backendUrl + "/api/cart/update",
+          backend_url + "/api/cart/update",
           { itemId, color, quantity },
           { headers: { token } }
         );
@@ -139,7 +140,7 @@ const ShopContextProvider = ({ children }) => {
   const getWishlist = useCallback(async () => {
     try {
       console.log("Fetching wishlist with token:", token);
-      const response = await axios.get(backendUrl + "/api/user/wishlist", {
+      const response = await axios.get(backend_url + "/api/user/wishlist", {
         headers: { Authorization: `Bearer ${token}` },
       });
       console.log("Wishlist response:", response.data);
@@ -150,7 +151,7 @@ const ShopContextProvider = ({ children }) => {
     } catch (error) {
       console.error("Error fetching wishlist:", error);
     }
-  }, [backendUrl, token]);
+  }, [token]);
 
   // ADDING ITEMS TO WISHLIST
   const toggleWishlist = async (productId) => {
@@ -162,7 +163,7 @@ const ShopContextProvider = ({ children }) => {
       }
       
       const response = await axios.post(
-        backendUrl + "/api/user/wishlist/toggle",
+        backend_url + "/api/user/wishlist/toggle",
         { productId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -186,7 +187,7 @@ const ShopContextProvider = ({ children }) => {
       }
       
       const response = await axios.post(
-        backendUrl + "/api/user/wishlist/toggle",
+        backend_url + "/api/user/wishlist/toggle",
         { productId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -207,7 +208,7 @@ const ShopContextProvider = ({ children }) => {
       console.log("Current wishlist before removal:", wishlist);
       
       const response = await axios.post(
-        backendUrl + "/api/user/wishlist/remove",
+        backend_url + "/api/user/wishlist/remove",
         { productId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -238,7 +239,7 @@ const ShopContextProvider = ({ children }) => {
 
   const getProductData = useCallback(async () => {
     try {
-      const response = await axios.get(backendUrl + "/api/product/list");
+      const response = await axios.get(backend_url + "/api/product/list");
       if (response.data.success) {
         setProducts(response.data.products);
       } else {
@@ -248,7 +249,7 @@ const ShopContextProvider = ({ children }) => {
       console.log(error);
       toast.error(error.message);
     }
-  }, [backendUrl]);
+  }, []);
 
   // GETTING USER CART
   const getUserCart = useCallback(async () => {
@@ -260,7 +261,7 @@ const ShopContextProvider = ({ children }) => {
       
       console.log("Getting user cart with token:", token);
       const response = await axios.post(
-        backendUrl + "/api/cart/get",
+        backend_url + "/api/cart/get",
         {},
         { headers: { token } }
       );
@@ -275,7 +276,7 @@ const ShopContextProvider = ({ children }) => {
       toast.error("Failed to get your cart");
       return null;
     }
-  }, [backendUrl, token]);
+  }, [token]);
 
   // SYNC GUEST CART WITH USER CART AFTER LOGIN
   const syncGuestCartWithUserCart = useCallback(async () => {
@@ -317,7 +318,7 @@ const ShopContextProvider = ({ children }) => {
             console.log(`Adding item to server: ${itemId}, color: ${color}, quantity: ${quantity}`);
             // Use addToCart endpoint instead of update to properly handle existing items
             const updatePromise = axios.post(
-              backendUrl + "/api/cart/add",
+              backend_url + "/api/cart/add",
               { itemId, color, quantity: quantity },
               { headers: { token } }
             );
@@ -347,14 +348,14 @@ const ShopContextProvider = ({ children }) => {
     } finally {
       setIsCartSyncing(false);
     }
-  }, [backendUrl, token, getUserCart, isCartSyncing]);
+  }, [token, getUserCart, isCartSyncing]);
 
   // CLEAR CART
   const clearCart = async () => {
     try {
       if (token) {
         await axios.post(
-          backendUrl + "/api/cart/clear",
+          backend_url + "/api/cart/clear",
           {},
           { headers: { token } }
         );
