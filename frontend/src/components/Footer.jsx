@@ -108,10 +108,6 @@ const Footer = () => {
           <FaCopyright />
           Arian Shop 2025
         </span>
-        <span className="flex items-center gap-1">
-          <FaCode />
-          Code with Lanang
-        </span>
         <span>All rights reserved</span>
       </p>
     </footer>
