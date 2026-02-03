@@ -7,7 +7,6 @@ import Add from "./pages/Add";
 import Orders from "./pages/Orders";
 import List from "./pages/List";
 
-export const backend_url = "https://arian-shop-backend.vercel.app";
 export const currency = "IDR ";
 
 export default function App() {

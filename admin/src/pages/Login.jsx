@@ -1,7 +1,7 @@
 import { useState } from "react";
 import login from "../assets/logo_baru.png";
 import axios from "axios";
-import { backend_url } from "../App";
+import { backend_url } from "../config";
 import { toast } from "react-toastify";
 import PropTypes from 'prop-types';
 
