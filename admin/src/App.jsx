@@ -7,7 +7,6 @@ import Add from "./pages/Add";
 import Orders from "./pages/Orders";
 import List from "./pages/List";
 
-export const currency = "IDR ";
 
 export default function App() {
   const [token, setToken] = useState(

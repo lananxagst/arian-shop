@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
-import { currency } from "../App";
 import { backend_url } from "../config";
+import { currency } from "../config";
 import { toast } from "react-toastify";
 import { TfiPackage } from "react-icons/tfi";
 import PropTypes from 'prop-types';
