@@ -1,4 +1,4 @@
 // Configuration for the frontend application
-export const backend_url = "https://arian-shop-backend.vercel.app";
+export const backend_url = "http://76.13.192.47:4000";
 export const currency = "IDR";
 export const delivery_charges = 10;
