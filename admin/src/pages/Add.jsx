@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import upload_icon from "../assets/upload_icon.png";
 import { FaCheck } from "react-icons/fa6";
 import axios from "axios";
-import { backend_url } from "../App";
+import { backend_url } from "../config";
 import { toast } from "react-toastify";
 
 const Add = ({ token }) => {

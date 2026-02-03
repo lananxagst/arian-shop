@@ -1,7 +1,7 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
-import { backend_url, currency } from "../App";
 import { toast } from "react-toastify";
+import { backend_url } from "../config";
 import { TbTrash } from "react-icons/tb";
 
 const List = ({ token }) => {
